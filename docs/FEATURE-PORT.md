@@ -6,7 +6,15 @@
 - Artemide decoder and frame release implementation retained.
 - Universal and per-ABI development APK build workflow.
 
-## Implementation order
+## Implemented in 0.1.1-dev
+
+- Syzygy challenge/response pairing with authenticated server certificate pinning.
+- Optional connection-key field in Add Computer; normal PIN pairing retained.
+- View-only mode and keyboard, pointer and controller permissions, including
+  blocking clipboard uploads when keyboard input is disabled.
+- Profile-aware permission settings; session configuration applied at connection.
+
+## Remaining implementation order
 
 1. **Syzygy passkey pairing:** IP address plus optional connection-key field in
    Add Computer. Authenticate the server confirmation before pinning its

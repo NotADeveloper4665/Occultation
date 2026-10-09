@@ -261,6 +261,34 @@ public class ComputerManagerService extends Service {
             return ComputerManagerService.this.addComputerBlocking(fakeDetails);
         }
 
+        public boolean pairWithSyzygyKey(String uuid, String key)
+                throws java.io.IOException, org.xmlpull.v1.XmlPullParserException {
+            synchronized (pollingTuples) {
+                for (PollingTuple tuple : pollingTuples) {
+                    if (!uuid.equals(tuple.computer.uuid)) continue;
+                    synchronized (tuple.networkLock) {
+                        ComputerDetails computer = tuple.computer;
+                        NvHTTP http = new NvHTTP(computer.activeAddress, computer.httpsPort,
+                                idManager.getUniqueId(), computer.serverCert,
+                                PlatformBinding.getCryptoProvider(ComputerManagerService.this));
+                        PairingManager pairing = http.getPairingManager();
+                        if (pairing.pairWithSyzygyKey(key) != PairingManager.PairState.PAIRED) return false;
+                        if (!getLocalDatabaseReference()) throw new java.io.IOException("Host database unavailable");
+                        try {
+                            computer.serverCert = pairing.getPairedCert();
+                            computer.pairState = PairingManager.PairState.PAIRED;
+                            computer.state = ComputerDetails.State.UNKNOWN;
+                            dbManager.updateComputer(computer);
+                        } finally {
+                            releaseLocalDatabaseReference();
+                        }
+                        return true;
+                    }
+                }
+            }
+            throw new java.io.IOException("Host was removed while pairing");
+        }
+
         public void removeComputer(ComputerDetails computer) {
             ComputerManagerService.this.removeComputer(computer);
         }

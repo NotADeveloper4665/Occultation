@@ -506,7 +506,7 @@ public class NvHTTP {
         }
         
         if (response.code() == 404) {
-            throw new FileNotFoundException(completeUrl.toString());
+            throw new FileNotFoundException(path.equals("pair") ? "Pairing endpoint unavailable" : completeUrl.toString());
         }
         else {
             throw new HostHttpResponseException(response.code(), response.message());
@@ -527,13 +527,13 @@ public class NvHTTP {
             String respString = resp.string();
             resp.close();
 
-            if (verbose && !path.equals("serverinfo")) {
+            if (verbose && !path.equals("serverinfo") && !path.equals("pair")) {
                 LimeLog.info(getCompleteUrl(baseUrl, path, query)+" -> "+respString);
             }
 
             return respString;
         } catch (IOException e) {
-            if (verbose && !path.equals("serverinfo")) {
+            if (verbose && !path.equals("serverinfo") && !path.equals("pair")) {
                 LimeLog.warning(getCompleteUrl(baseUrl, path, query)+" -> "+e.getMessage());
                 e.printStackTrace();
             }
@@ -795,6 +795,8 @@ public class NvHTTP {
             }
         }
     }
+
+    String getUniqueId() { return uniqueId; }
 
     String executePairingCommand(String additionalArguments, boolean enableReadTimeout) throws HostHttpResponseException, IOException {
         return openHttpConnectionToString(enableReadTimeout ? httpClientLongConnectTimeout : httpClientLongConnectNoReadTimeout,

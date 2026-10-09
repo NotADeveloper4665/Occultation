@@ -719,5 +719,16 @@
 
         <string name="title_checkbox_snappy_input">Snappy Input</string>
         <string name="summary_checkbox_snappy_input">Offload input to a background thread and ignore tiny axis/trigger deltas for a smoother feel. </string>
+    <string name="syzygy_key_hint">Syzygy connection key (optional)</string>
+    <string name="syzygy_key_help">Enter the host address above. Paste the key printed by Syzygy to pair without a PIN. Leave this blank for normal PIN pairing. The key is not saved.</string>
+    <string name="syzygy_key_invalid">Enter the 48-character key printed by Syzygy.</string>
+    <string name="syzygy_pair_failed">Connection-key pairing failed. Check the key and that the host supports Syzygy key pairing, then try again. The host remains in your computer list.</string>
+    <string name="eclipse_input_title">Input permissions</string>
+    <string name="eclipse_view_only_title">View-only mode</string>
+    <string name="eclipse_view_only_summary">Block keyboard, mouse, touch, pen, controller input and clipboard uploads. Changes apply when you reconnect.</string>
+    <string name="eclipse_allow_keyboard_title">Allow keyboard input</string>
+    <string name="eclipse_allow_mouse_title">Allow mouse, touch and pen input</string>
+    <string name="eclipse_allow_controller_title">Allow controller input</string>
+    <string name="eclipse_input_summary">Controls input sent by this client. Does not change host permissions. Changes apply when you reconnect.</string>
 </resources>
 

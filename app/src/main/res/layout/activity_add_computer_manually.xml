@@ -49,4 +49,21 @@
         android:preferKeepClear="true"
         android:text="@android:string/ok"/>
 	
+    <EditText
+        android:id="@+id/syzygyKeyText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/hostTextView"
+        android:layout_marginTop="20dp"
+        android:hint="@string/syzygy_key_hint"
+        android:inputType="textPassword"
+        android:singleLine="true"
+        android:saveEnabled="false"
+        android:importantForAutofill="no"
+        android:imeOptions="actionDone" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/syzygyKeyText"
+        android:text="@string/syzygy_key_help" />
 </RelativeLayout>

@@ -767,7 +767,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .setMaxPacketSize(1392)
                 .setRemoteConfiguration(StreamConfiguration.STREAM_CFG_AUTO) // NvConnection will perform LAN and VPN detection
                 .setSupportedVideoFormats(supportedVideoFormats)
-                .setAttachedGamepadMask(gamepadMask)
+                .setAttachedGamepadMask(prefConfig.viewOnly || !prefConfig.allowController ? 0 : gamepadMask)
                 .setClientRefreshRateX100((int)(displayRefreshRate * 100))
                 .setAudioConfiguration(prefConfig.audioConfiguration)
                 .setColorSpace(decoderRenderer.getPreferredColorSpace())
@@ -780,6 +780,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 new ComputerDetails.AddressTuple(host, port),
                 httpsPort, uniqueId, config,
                 PlatformBinding.getCryptoProvider(this), serverCert);
+        conn.configureInputPermissions(prefConfig.viewOnly, prefConfig.allowKeyboard,
+                prefConfig.allowMouse, prefConfig.allowController);
         controllerHandler = new ControllerHandler(this, conn, this, prefConfig);
         keyboardTranslator = new KeyboardTranslator(prefConfig);
 
@@ -2261,6 +2263,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     public boolean sendClipboard(boolean force) {
+        if (prefConfig.viewOnly || !prefConfig.allowKeyboard) return false;
         if (httpConn == null) {
             LimeLog.warning("httpConn not ready, cannot send clipboard!");
             return false;

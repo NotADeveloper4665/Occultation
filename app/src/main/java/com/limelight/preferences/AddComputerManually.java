@@ -42,8 +42,13 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class AddComputerManually extends AppCompatActivity {
     private TextView hostText;
+    private TextView keyText;
+    private static final class AddRequest {
+        final String address, key;
+        AddRequest(String address, String key) { this.address = address; this.key = key; }
+    }
     private ComputerManagerService.ComputerManagerBinder managerBinder;
-    private final LinkedBlockingQueue<String> computersToAdd = new LinkedBlockingQueue<>();
+    private final LinkedBlockingQueue<AddRequest> computersToAdd = new LinkedBlockingQueue<>();
     private Thread addThread;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, final IBinder binder) {
@@ -118,7 +123,9 @@ public class AddComputerManually extends AppCompatActivity {
         return null;
     }
 
-    private void doAddPc(String rawUserInput) throws InterruptedException {
+    private void doAddPc(AddRequest request) throws InterruptedException {
+        String rawUserInput = request.address;
+        boolean pairingFailed = false;
         boolean wrongSiteLocal = false;
         boolean invalidInput = false;
         boolean success;
@@ -143,6 +150,10 @@ public class AddComputerManually extends AppCompatActivity {
 
                 details.manualAddress = new ComputerDetails.AddressTuple(host, port);
                 success = managerBinder.addComputerBlocking(details);
+                if (success && !request.key.isEmpty()) {
+                    success = managerBinder.pairWithSyzygyKey(details.uuid, request.key);
+                    pairingFailed = !success;
+                }
                 if (!success){
                     wrongSiteLocal = isWrongSubnetSiteLocalAddress(host);
                 }
@@ -151,6 +162,9 @@ public class AddComputerManually extends AppCompatActivity {
                 success = false;
                 invalidInput = true;
             }
+        } catch (java.io.IOException | org.xmlpull.v1.XmlPullParserException e) {
+            success = false;
+            pairingFailed = true;
         } catch (InterruptedException e) {
             // Propagate the InterruptedException to the caller for proper handling
             dialog.dismiss();
@@ -164,7 +178,7 @@ public class AddComputerManually extends AppCompatActivity {
         }
 
         // Keep the SpinnerDialog open while testing connectivity
-        if (!success && !wrongSiteLocal && !invalidInput) {
+        if (!success && !wrongSiteLocal && !invalidInput && !pairingFailed) {
             // Run the test before dismissing the spinner because it can take a few seconds.
             portTestResult = MoonBridge.testClientConnectivity(ServerHelper.CONNECTION_TEST_SERVER, 443,
                     MoonBridge.ML_PORT_FLAG_TCP_47984 | MoonBridge.ML_PORT_FLAG_TCP_47989);
@@ -175,7 +189,10 @@ public class AddComputerManually extends AppCompatActivity {
 
         dialog.dismiss();
 
-        if (invalidInput) {
+        if (pairingFailed) {
+            Dialog.displayDialog(this, getString(R.string.conn_error_title), getString(R.string.syzygy_pair_failed), false);
+        }
+        else if (invalidInput) {
             Dialog.displayDialog(this, getResources().getString(R.string.conn_error_title), getResources().getString(R.string.addpc_unknown_host), false);
         }
         else if (wrongSiteLocal) {
@@ -227,7 +244,7 @@ public class AddComputerManually extends AppCompatActivity {
             public void run() {
                 while (!isInterrupted()) {
                     try {
-                        String computer = computersToAdd.take();
+                        AddRequest computer = computersToAdd.take();
                         doAddPc(computer);
                     } catch (InterruptedException e) {
                         return;
@@ -255,6 +272,7 @@ public class AddComputerManually extends AppCompatActivity {
             }
 
             addThread = null;
+            computersToAdd.clear();
         }
     }
 
@@ -327,6 +345,10 @@ public class AddComputerManually extends AppCompatActivity {
         UiHelper.notifyNewRootView(this);
 
         this.hostText = findViewById(R.id.hostTextView);
+        this.keyText = findViewById(R.id.syzygyKeyText);
+        keyText.setSaveEnabled(false);
+        keyText.setOnEditorActionListener((view, action, event) ->
+                action == EditorInfo.IME_ACTION_DONE && handleDoneEvent());
         hostText.setImeOptions(EditorInfo.IME_ACTION_DONE);
         hostText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
@@ -382,7 +404,7 @@ public class AddComputerManually extends AppCompatActivity {
             builder.setPositiveButton(getString(R.string.proceed), (dialog, which) -> {
                 dialog.dismiss();
                 finish();
-                computersToAdd.add(server + '?' + query);
+                computersToAdd.add(new AddRequest(server + '?' + query, ""));
             });
 
             builder.setNegativeButton(getString(R.string.cancel), (dialog, which) -> dialog.dismiss());
@@ -401,7 +423,16 @@ public class AddComputerManually extends AppCompatActivity {
             return true;
         }
 
-        computersToAdd.add(hostAddress);
+        String key = keyText.getText().toString().trim();
+        if (!key.isEmpty()) {
+            try { key = com.limelight.nvstream.http.SyzygyPairing.normalizeKey(key); }
+            catch (IllegalArgumentException e) {
+                keyText.setError(getString(R.string.syzygy_key_invalid));
+                return true;
+            }
+        }
+        keyText.setText("");
+        computersToAdd.add(new AddRequest(hostAddress, key));
         return false;
     }
 }
