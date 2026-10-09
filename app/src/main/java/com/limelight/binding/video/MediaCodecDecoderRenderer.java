@@ -714,7 +714,7 @@ this.prefs = prefs;
 
         // Start the decoder
 
-        if (useAsyncCodec) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && useAsyncCodec) {
             try {
                 if (codecCallbackThread == null) {
                     codecCallbackThread = new android.os.HandlerThread("CodecCb", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY);
@@ -1018,7 +1018,7 @@ this.initialWidth = invertResolution ? height : width;
                     LimeLog.warning("Trying to restart decoder after CodecException");
                     try {
 
-                        if (useAsyncCodec) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && useAsyncCodec) {
                             try { videoDecoder.setCallback(null, null); } catch (Throwable ignored) {}
                             try { if (codecCallbackThread != null) { codecCallbackThread.quitSafely(); codecCallbackThread = null; } } catch (Throwable ignored) {}
                             try { asyncInputQueue.clear(); } catch (Throwable ignored) {}
@@ -1425,6 +1425,7 @@ this.initialWidth = invertResolution ? height : width;
                                 android.os.PerformanceHintManager.Session hs =
                                         phm.createHintSession(new int[]{ tid }, targetWorkNs);
                                 if (hs != null) {
+                                    __hs = hs;
                                     try { hs.updateTargetWorkDuration(targetWorkNs); } catch (Throwable ignored) {}
                                     LimeLog.info("PHM: session active (targetNs=" + targetWorkNs + ", rateNs=" + rateNs + ")");
                                 }
@@ -1834,7 +1835,7 @@ if (preferLowerDelays) {
                 } catch (Throwable ignored) {}
 
 // Close PHM session if created and restore affinity
-                try { if (__hs != null) __hs.close(); } catch (Throwable ignored) {}
+                try { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && __hs != null) __hs.close(); } catch (Throwable ignored) {}
                 try {
                     com.limelight.utils.CpuAffinity.clearAllThreadsAffinityAllOnline();
 

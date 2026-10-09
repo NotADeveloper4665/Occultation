@@ -289,7 +289,7 @@ public final class CpuAffinity {
                 __v("AffinityDetect: no clusters found");
                 return null;
             }
-            clusters.sort((a, b) -> Long.compare(a.maxHz, b.maxHz));
+            java.util.Collections.sort(clusters, (a, b) -> Long.compare(a.maxHz, b.maxHz));
             __Cluster prime = clusters.get(clusters.size() - 1);
             __Cluster big   = (clusters.size() >= 2) ? clusters.get(clusters.size() - 2) : null;
             double ratio = (big != null && big.maxHz > 0) ? ((double)prime.maxHz / (double)big.maxHz) : 1.0;
