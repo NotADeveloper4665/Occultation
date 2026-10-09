@@ -11,8 +11,8 @@ android {
         minSdk 21
         targetSdk 34
 
-        versionName "20.2.6"
-        versionCode = 57
+        versionName "0.1.0-dev"
+        versionCode = 1
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes
         ndk.debugSymbolLevel = 'FULL'
@@ -40,7 +40,7 @@ android {
                     "obtainium_app_url",
                     "data:text/html;base64,PGgxPlJvb3QgYnVpbGQgaXMgbm90IGF2YWlsYWJsZTwvaDE+"
 
-            applicationId "com.limelight.root"
+            applicationId "io.github.notadeveloper4665.occultation.root"
             dimension "root"
             buildConfigField "boolean", "ROOT_BUILD", "true"
         }
@@ -54,9 +54,9 @@ android {
 
             resValue "string",
                     "obtainium_app_url",
-                    "https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.limelight.noir%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FClassicOldSong%2Fmoonlight-android%22%2C%22author%22%3A%22ClassicOldSong%22%2C%22name%22%3A%22Artemis%22%2C%22additionalSettings%22%3A%22%7B%5C%22apkFilterRegEx%5C%22%3A%5C%22nonRoot%5C%22%2C%5C%22matchGroutToUse%5C%22%3A%5C%22%241%5C%22%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22v(.%2B)%5C%22%7D%22%7D"
+                    "https://github.com/NotADeveloper4665/Occultation/releases"
 
-            applicationId "com.limelight"
+            applicationId "io.github.notadeveloper4665.occultation"
             dimension "root"
             buildConfigField "boolean", "ROOT_BUILD", "false"
         }
@@ -95,10 +95,10 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".noirdebug"
-            resValue "string", "app_label", "Diana"
-            resValue "string", "app_label_root", "Diana (Root)"
-            resValue "string", "app_label_game", "Diana (Game)"
+            applicationIdSuffix ".debug"
+            resValue "string", "app_label", "Occultation (Development)"
+            resValue "string", "app_label_root", "Occultation (Root Development)"
+            resValue "string", "app_label_game", "Occultation (Development)"
 
             minifyEnabled false // Disabled in debug to avoid R8 stripping JNI classes
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -134,10 +134,10 @@ android {
             // is to please change the applicationId before you publish.
             //
             // TL;DR: Leave the following line alone!
-            applicationIdSuffix ".noir"
-            resValue "string", "app_label", "Artemis"
-            resValue "string", "app_label_root", "Artemis (Root)"
-            resValue "string", "app_label_game", "Artemis (Game)"
+            // Occultation has its own application ID in each flavor.
+            resValue "string", "app_label", "Occultation"
+            resValue "string", "app_label_root", "Occultation (Root)"
+            resValue "string", "app_label_game", "Occultation"
 
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -153,6 +153,7 @@ android {
     splits {
         abi {
             enable true
+            universalApk true
             reset()
             include "x86", "x86_64", "armeabi-v7a", "arm64-v8a"
         }

@@ -1,0 +1,42 @@
+name: Occultation Android
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main, moonlight-noir]
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  development-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android toolchain
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.0.12077973'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test, lint and build development APKs
+        run: bash ./gradlew :app:testNonRoot_gameDebugUnitTest :app:lintNonRoot_gameDebug :app:assembleNonRoot_gameDebug --stacktrace
+      - name: Upload development APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Occultation-0.1.0-dev-APKs
+          path: app/build/outputs/apk/nonRoot_game/debug/*.apk
+          if-no-files-found: error
+      - name: Upload check reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Occultation-check-reports
+          path: app/build/reports/
+          if-no-files-found: ignore

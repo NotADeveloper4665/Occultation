@@ -1,29 +1,34 @@
-Welcome! / Benvenuti!
+# Occultation
 
-About This Fork:
+**The Eclipse Android client**, based on [Artemide](https://github.com/derflacco/moonlight-android).
 
-This project began with a clear goal: to fix the notoriously high decoding latency on MediaTek (Mtk) devices. The initial approach involved enabling RFI for the c2.mtk and omx.mtk decoders and adjusting specific MediaTek keys within the MediacodecHelper.
+Occultation brings Eclipse's Syzygy integration and streaming controls to Android
+while retaining Artemide's mobile decoder work and Moonlight compatibility.
 
-Through further experimentation, I've also implemented LFR (Prefer Lower Delays) , which successfully reduces the total end-to-end latency by a few milliseconds on many devices.
+This is the **project foundation**, version `0.1.0-dev`. Eclipse feature ports
+are planned; Syzygy passkey pairing and recording are not wired into the app yet.
 
-A Word of Caution: Here Be Dragons! 🐲
+- [Feature port and validation plan](docs/FEATURE-PORT.md)
+- [Pinned upstream baseline](docs/ARTEMIDE-UPSTREAM.md)
+- [Original Artemide README](docs/ARTEMIDE-README.md)
 
-This codebase is my personal playground. As such, please be aware of the following:
+## Development builds
 
-Chaotic Development: My workflow is experimental and fast-paced. You will find multiple branches, occasional force pushes, and a mix of brilliant ideas and terrible ones.
+In GitHub Actions, run **Occultation Android**. Download the APK artifacts from
+the successful run. The universal development APK supports ARMv7, ARM64, x86
+and x86-64 and installs alongside Artemide, Artemis and Moonlight.
 
-Code & Comments: The source contains a blend of Italian and English comments, some code snippets generated with the help of AI (like ChatGPT Plus), and a few bugs that inevitably slip through.
+For local development, use Java 17, Android SDK 36 and NDK `27.0.12077973`:
 
-Testing Limitations: I do my best to test and debug thoroughly before any release, but my resources are limited. I can only validate changes on my own hardware.
+```sh
+git submodule update --init --recursive
+./gradlew :app:testNonRoot_gameDebugUnitTest :app:lintNonRoot_gameDebug :app:assembleNonRoot_gameDebug
+```
 
-I work on this project for fun and the thrill of discovery. This means I often implement new features that might be challenging to maintain in the long run.
+Development builds use debug signing. Production APKs require a stable private
+signing key; a debug artifact must not be presented as a production release.
 
-Thank you for taking the time to read this. I hope you find my work useful!
+## Credits and license
 
-Enjoy!
-
-Ciao!
-
-— DerFlacco
-
-
+Based on Artemide by DerFlacco, Artemis by ClassicOldSong, and Moonlight Android.
+Existing GPL license and upstream copyright notices remain in effect.
