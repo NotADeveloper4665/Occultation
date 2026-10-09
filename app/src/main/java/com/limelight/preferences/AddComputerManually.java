@@ -347,8 +347,8 @@ public class AddComputerManually extends AppCompatActivity {
         this.hostText = findViewById(R.id.hostTextView);
         this.keyText = findViewById(R.id.syzygyKeyText);
         keyText.setSaveEnabled(false);
-        keyText.setOnEditorActionListener((view, action, event) ->
-                action == EditorInfo.IME_ACTION_DONE && handleDoneEvent());
+        keyText.setOnEditorActionListener((view, imeAction, event) ->
+                imeAction == EditorInfo.IME_ACTION_DONE && handleDoneEvent());
         hostText.setImeOptions(EditorInfo.IME_ACTION_DONE);
         hostText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override

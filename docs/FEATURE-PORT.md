@@ -16,26 +16,21 @@
 
 ## Remaining implementation order
 
-1. **Syzygy passkey pairing:** IP address plus optional connection-key field in
-   Add Computer. Authenticate the server confirmation before pinning its
-   certificate. Never persist the shared passkey or log pairing query strings.
-   Keep traditional PIN pairing available for other hosts. Test invalid keys,
-   expired/replayed challenges, certificate substitution and reconnects.
-2. **Controls:** view-only mode, separate keyboard/mouse/controller permissions,
-   and connect directly to Desktop. Enforce permissions at every input send path.
-3. **Profiles and stats:** extend existing Android profiles rather than duplicate
+1. **Direct desktop:** connect straight to the host's Desktop app when requested,
+   with normal app selection available as a fallback.
+2. **Profiles and stats:** extend existing Android profiles rather than duplicate
    them. Compact stats must report the active decoder/render path accurately.
-4. **Steady frame delay:** monotonic release schedule with a millisecond target,
+3. **Steady frame delay:** monotonic release schedule with a millisecond target,
    measured queue residence and gradual adjustment. Preserve lower-delay mode as
    a separate choice. Test variable refresh rates and network jitter.
-5. **Recording:** capture encoded video/audio without re-encoding; choose a
+4. **Recording:** capture encoded video/audio without re-encoding; choose a
    container supporting negotiated codecs. Use Android storage selection,
    bounded queues, clean finalization and recovery from disconnect/storage errors.
-6. **Upscaling:** inspect Artemide experimental rendering branches before choosing
+5. **Upscaling:** inspect Artemide experimental rendering branches before choosing
    a portable shader implementation. Support Adreno, Mali and other GPUs through
    runtime capability checks. Disable recording while FSR is active, matching
    Eclipse's current policy; do not require a Qualcomm-specific dependency.
-7. **Adaptive bitrate:** port only after checking the actual Syzygy control
+6. **Adaptive bitrate:** port only after checking the actual Syzygy control
    endpoint and congestion behavior; retain a manual bitrate override.
 
 Microphone/webcam forwarding needs Android capture permissions, lifecycle handling
