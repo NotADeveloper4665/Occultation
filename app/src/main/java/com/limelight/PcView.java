@@ -27,6 +27,7 @@ import com.limelight.ui.AdapterFragmentCallbacks;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.HelpLauncher;
 import com.limelight.utils.ServerHelper;
+import com.limelight.utils.DesktopSelection;
 import com.limelight.utils.ShortcutHelper;
 import com.limelight.utils.UiHelper;
 
@@ -75,6 +76,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     private PcGridAdapter pcGridAdapter;
     private ShortcutHelper shortcutHelper;
     private ComputerManagerService.ComputerManagerBinder managerBinder;
+    private boolean desktopLaunchPending;
     private boolean freezeUpdates, runningPolling, inForeground, completeOnCreateCalled;
     private ComputerDetails.AddressTuple pendingPairingAddress;
     private String pendingPairingPin, pendingPairingPassphrase;
@@ -711,6 +713,41 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
         }).start();
     }
 
+    private void doConnect(ComputerDetails computer) {
+        if (!PreferenceConfiguration.readPreferences(this).directDesktop) {
+            doAppList(computer, false, false);
+            return;
+        }
+        if (desktopLaunchPending || managerBinder == null) return;
+        desktopLaunchPending = true;
+        final ComputerManagerService.ComputerManagerBinder binder = managerBinder;
+        Toast.makeText(this, R.string.eclipse_desktop_loading, Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            NvApp desktop = null;
+            try {
+                NvHTTP http = new NvHTTP(ServerHelper.getCurrentAddressFromComputer(computer),
+                        computer.httpsPort, binder.getUniqueId(), computer.serverCert,
+                        PlatformBinding.getCryptoProvider(this));
+                ComputerDetails current = http.getComputerDetails(true);
+                desktop = DesktopSelection.find(http.getAppList(), current.runningGameId);
+            } catch (IOException | XmlPullParserException e) {
+                LimeLog.warning("Automatic Desktop lookup failed: " + e.getClass().getSimpleName());
+            }
+            final NvApp selected = desktop;
+            runOnUiThread(() -> {
+                desktopLaunchPending = false;
+                if (!inForeground || isFinishing() || isDestroyed() || managerBinder != binder) return;
+                if (selected == null) {
+                    Toast.makeText(this, R.string.eclipse_desktop_fallback, Toast.LENGTH_LONG).show();
+                    doAppList(computer, false, false);
+                } else {
+                    ServerHelper.doStart(this, selected, computer, binder,
+                            PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
+                }
+            });
+        }, "DesktopLookup").start();
+    }
+
     private void doAppList(ComputerDetails computer, boolean newlyPaired, boolean showHiddenGames) {
         if (computer.state == ComputerDetails.State.OFFLINE) {
             Toast.makeText(PcView.this, getResources().getString(R.string.error_pc_offline), Toast.LENGTH_SHORT).show();
@@ -903,7 +940,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                     // Pair an unpaired machine by default
                     doPair(computer.details, null, null);
                 } else {
-                    doAppList(computer.details, false, false);
+                    doConnect(computer.details);
                 }
             }
         });

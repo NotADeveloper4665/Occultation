@@ -12,6 +12,7 @@ import com.limelight.profiles.ProfilesManager;
 public class PreferenceConfiguration {
 
     public boolean viewOnly, allowKeyboard, allowMouse, allowController;
+    public boolean directDesktop;
     public boolean enableAsyncDecoder = false;
     public boolean snappyInput = false;
 
@@ -715,6 +716,7 @@ private static int getFramePacingValue(Context context) {
             prefs = ProfilesManager.getInstance().getOverlayingSharedPreferences(context);
         }
         PreferenceConfiguration config = new PreferenceConfiguration();
+        config.directDesktop = prefs.getBoolean("eclipse_direct_desktop", false);
         config.viewOnly = prefs.getBoolean("eclipse_view_only", false);
         config.allowKeyboard = prefs.getBoolean("eclipse_allow_keyboard", true);
         config.allowMouse = prefs.getBoolean("eclipse_allow_mouse", true);

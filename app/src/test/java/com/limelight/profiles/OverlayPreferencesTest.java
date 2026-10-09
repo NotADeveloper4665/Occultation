@@ -126,4 +126,19 @@ public class OverlayPreferencesTest {
         assertEquals(0.25f, cfg2.panOffsetX, 0.0001f);
         assertEquals(0.25f, cfg2.panOffsetY, 0.0001f);
     }
+    @Test
+    public void directDesktopIsSavedAndReloadedWithProfile() {
+        ProfilesManager pm = ProfilesManager.getInstance();
+        pm.load(ctx);
+        Map<String, Object> opts = new java.util.HashMap<>();
+        opts.put("eclipse_direct_desktop", true);
+        SettingsProfile profile = new SettingsProfile(UUID.randomUUID(), "Desktop", 0, 0, opts);
+        pm.add(profile);
+        pm.setActive(profile.getUuid());
+        assertTrue(PreferenceConfiguration.readPreferences(ctx).directDesktop);
+        assertTrue(pm.save(ctx));
+        ProfilesManager.instance = null;
+        assertTrue(ProfilesManager.getInstance().load(ctx));
+        assertTrue(PreferenceConfiguration.readPreferences(ctx).directDesktop);
+    }
 }

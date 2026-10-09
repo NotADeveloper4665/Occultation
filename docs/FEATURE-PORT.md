@@ -14,12 +14,17 @@
   blocking clipboard uploads when keyboard input is disabled.
 - Profile-aware permission settings; session configuration applied at connection.
 
+## Implemented in 0.1.2-dev
+
+- Profile-aware direct Desktop connection from a paired computer card.
+- Fresh authenticated host lookup; no guessed app IDs, no automatic game termination.
+- Falls back to normal app selection for missing/ambiguous Desktop or another running app.
+
 ## Remaining implementation order
 
-1. **Direct desktop:** connect straight to the host's Desktop app when requested,
-   with normal app selection available as a fallback.
+1. **Profiles:** extend the existing profile system for each new streaming setting.
 2. **Profiles and stats:** extend existing Android profiles rather than duplicate
-   them. Compact stats must report the active decoder/render path accurately.
+   them. The Eclipse overlay UI is excluded from this port at the user's request.
 3. **Steady frame delay:** monotonic release schedule with a millisecond target,
    measured queue residence and gradual adjustment. Preserve lower-delay mode as
    a separate choice. Test variable refresh rates and network jitter.

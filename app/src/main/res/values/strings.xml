@@ -730,5 +730,10 @@
     <string name="eclipse_allow_mouse_title">Allow mouse, touch and pen input</string>
     <string name="eclipse_allow_controller_title">Allow controller input</string>
     <string name="eclipse_input_summary">Controls input sent by this client. Does not change host permissions. Changes apply when you reconnect.</string>
+    <string name="eclipse_connection_title">Host connection</string>
+    <string name="eclipse_direct_desktop_title">Connect straight to Desktop</string>
+    <string name="eclipse_direct_desktop_summary">Tap a paired computer to start its Desktop stream. Shows the app list if Desktop is unavailable or another app is running. Saved with the active profile.</string>
+    <string name="eclipse_desktop_loading">Checking Desktop availability…</string>
+    <string name="eclipse_desktop_fallback">Could not start Desktop automatically. Choose an app to connect.</string>
 </resources>
 

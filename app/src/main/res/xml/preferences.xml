@@ -1001,6 +1001,9 @@
             android:title="@string/title_follow_update"
             app:iconSpaceReserved="false" />
     </PreferenceCategory>
+    <PreferenceCategory android:key="eclipse_connection_category" android:title="@string/eclipse_connection_title" app:iconSpaceReserved="false">
+        <SwitchPreferenceCompat android:key="eclipse_direct_desktop" android:title="@string/eclipse_direct_desktop_title" android:summary="@string/eclipse_direct_desktop_summary" android:defaultValue="false" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
     <PreferenceCategory android:key="eclipse_input_category" android:title="@string/eclipse_input_title" app:iconSpaceReserved="false">
         <SwitchPreferenceCompat android:key="eclipse_view_only" android:title="@string/eclipse_view_only_title" android:summary="@string/eclipse_view_only_summary" android:defaultValue="false" android:disableDependentsState="true" app:iconSpaceReserved="false" />
         <SwitchPreferenceCompat android:key="eclipse_allow_keyboard" android:dependency="eclipse_view_only" android:title="@string/eclipse_allow_keyboard_title" android:summary="@string/eclipse_input_summary" android:defaultValue="true" app:iconSpaceReserved="false" />

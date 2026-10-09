@@ -5,7 +5,7 @@
 Occultation brings Eclipse's Syzygy integration and streaming controls to Android
 while retaining Artemide's mobile decoder work and Moonlight compatibility.
 
-Version `0.1.1-dev` adds Syzygy connection-key pairing and input permissions.
+Version `0.1.2-dev` includes Syzygy connection-key pairing, input permissions and direct Desktop connection.
 
 In **Add Computer**, enter the host address and optionally paste Syzygy's
 48-character connection key. Leave the key blank for normal PIN pairing.
@@ -15,6 +15,11 @@ Under **Settings → Input permissions**, choose view-only mode or allow keyboar
 mouse/touch/pen and controller input separately. These settings are included in
 profiles and take effect when reconnecting. They restrict this client's input;
 they do not change permissions granted by the host.
+
+Under **Settings → Host connection**, enable **Connect straight to Desktop** to
+start the advertised Desktop app when tapping a paired computer. If Desktop is
+missing, ambiguous, or another app is running, the normal app list remains available.
+The option is saved with profiles.
 
 Recording, steady-delay buffering, adaptive bitrate and upscaling ports remain planned.
 
