@@ -18,7 +18,9 @@ public final class TailscalePairing {
     // Run on the pairing worker. Advertising auto-pairing is not sufficient:
     // require a VPN route and a Tailscale address before sending enrollment.
     public static boolean protectedConnection(Context context, String host) throws IOException {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
+        // Automatic enrollment uses a literal endpoint so DNS cannot change
+        // the destination after this check. Hostnames use phrase pairing.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || !host.matches("[0-9a-fA-F:.]+")) return false;
         ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         if (manager == null) return false;
         NetworkCapabilities capabilities = manager.getNetworkCapabilities(manager.getActiveNetwork());

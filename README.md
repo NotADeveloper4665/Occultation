@@ -64,3 +64,7 @@ address, with the Tailscale VPN active on Android 6 or newer. Older Android
 versions use phrase pairing. Full permissions are granted by the host; client input restrictions
 still apply. Shared external nodes are excluded. Phrase pairing remains available
 for other connections; the old 48-character input is no longer accepted.
+
+For automatic enrollment, enter the host's literal Tailscale IP address.
+Hostnames use phrase pairing to avoid trusting a destination that can change
+between the identity check and the connection.
