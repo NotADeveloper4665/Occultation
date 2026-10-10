@@ -9,6 +9,12 @@ Version `0.1.2-dev` includes Syzygy connection-key pairing, input permissions an
 
 In **Add Computer**, enter the host address and optionally paste Syzygy's
 48-character connection key. Leave the key blank for normal PIN pairing.
+For an automatically discovered or previously added host, tap an unpaired host and
+choose **Pair with Syzygy key (PSK)**, or select that action from its long-press menu.
+Paste the key from `syzygy -s -auto -headless -psk` and press **Proceed**.
+The key alone is not a host address; the host must be reachable through its IP,
+hostname, or discovery.
+
 Keys are not saved; successfully paired hosts reconnect using their pinned certificate.
 
 Under **Settings → Input permissions**, choose view-only mode or allow keyboard,

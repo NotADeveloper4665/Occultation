@@ -30,6 +30,7 @@ import com.limelight.utils.ServerHelper;
 import com.limelight.utils.DesktopSelection;
 import com.limelight.utils.ShortcutHelper;
 import com.limelight.utils.UiHelper;
+import com.limelight.nvstream.http.SyzygyPairing;
 
 import android.app.ActivityManager;
 import android.app.AlertDialog;
@@ -61,6 +62,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
+import android.widget.TextView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -138,6 +140,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     private final static int GAMESTREAM_EOL_ID = 11;
     private final static int OPEN_MANAGEMENT_PAGE_ID = 20;
     private final static int PAIR_ID_OTP = 21;
+    private final static int PAIR_ID_SYZYGY = 22;
 
     private void initializeViews() {
         setContentView(R.layout.activity_pc_view);
@@ -433,6 +436,9 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
             menu.add(Menu.NONE, GAMESTREAM_EOL_ID, 2, getResources().getString(R.string.pcview_menu_eol));
         }
         else if (computer.details.pairState != PairState.PAIRED) {
+            if (!computer.details.nvidiaServer) {
+                menu.add(Menu.NONE, PAIR_ID_SYZYGY, 0, getString(R.string.syzygy_pair_action));
+            }
             menu.add(Menu.NONE, PAIR_ID_OTP, 1, getResources().getString(R.string.pcview_menu_pair_pc_otp));
             menu.add(Menu.NONE, PAIR_ID, 2, getResources().getString(R.string.pcview_menu_pair_pc));
             if (computer.details.nvidiaServer) {
@@ -470,6 +476,10 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     }
 
     private void doPair(final ComputerDetails computer, String otp, String passphrase) {
+        doPair(computer, otp, passphrase, null);
+    }
+
+    private void doPair(final ComputerDetails computer, String otp, String passphrase, String connectionKey) {
         if (computer.state == ComputerDetails.State.OFFLINE || computer.activeAddress == null) {
             Toast.makeText(PcView.this, getResources().getString(R.string.pair_pc_offline), Toast.LENGTH_SHORT).show();
             return;
@@ -479,6 +489,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
             return;
         }
 
+        final ComputerManagerService.ComputerManagerBinder pairingBinder = managerBinder;
         Toast.makeText(PcView.this, getResources().getString(R.string.pairing), Toast.LENGTH_SHORT).show();
         new Thread(new Runnable() {
             @Override
@@ -491,9 +502,14 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                     stopComputerUpdates(true);
 
                     httpConn = new NvHTTP(ServerHelper.getCurrentAddressFromComputer(computer),
-                            computer.httpsPort, managerBinder.getUniqueId(), computer.serverCert,
+                            computer.httpsPort, pairingBinder.getUniqueId(), computer.serverCert,
                             PlatformBinding.getCryptoProvider(PcView.this));
-                    if (httpConn.getPairState() == PairState.PAIRED) {
+                    if (connectionKey != null) {
+                        // Authenticate the key even if an untrusted server claims we are paired.
+                        success = pairingBinder.pairWithSyzygyKey(computer.uuid, connectionKey);
+                        message = success ? null : getString(R.string.syzygy_pair_failed);
+                    }
+                    else if (httpConn.getPairState() == PairState.PAIRED) {
                         // Don't display any toast, but open the app list
                         message = null;
                         success = true;
@@ -538,11 +554,11 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                             success = true;
 
                             // Pin this certificate for later HTTPS use
-                            managerBinder.getComputer(computer.uuid).serverCert = pm.getPairedCert();
+                            pairingBinder.getComputer(computer.uuid).serverCert = pm.getPairedCert();
 
                             // Invalidate reachability information after pairing to force
                             // a refresh before reading pair state again
-                            managerBinder.invalidateStateForComputer(computer.uuid);
+                            pairingBinder.invalidateStateForComputer(computer.uuid);
                         }
                         else {
                             // Should be no other values
@@ -554,8 +570,8 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                 } catch (FileNotFoundException e) {
                     message = getResources().getString(R.string.error_404);
                 } catch (XmlPullParserException | IOException e) {
-                    e.printStackTrace();
-                    message = e.getMessage();
+                    // Pairing errors must never expose a connection key or proof URL.
+                    message = connectionKey != null ? getString(R.string.syzygy_pair_failed) : e.getMessage();
                 }
 
                 Dialog.closeDialogs();
@@ -565,13 +581,19 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        if (isFinishing() || isDestroyed() || managerBinder != pairingBinder) return;
+                        if (!inForeground) {
+                            startComputerUpdates();
+                            return;
+                        }
                         if (toastMessage != null) {
                             Toast.makeText(PcView.this, toastMessage, Toast.LENGTH_LONG).show();
                         }
 
                         if (toastSuccess) {
                             // Open the app list after a successful pairing attempt
-                            doAppList(computer, true, false);
+                            if (connectionKey != null) doConnect(computer);
+                            else doAppList(computer, true, false);
                         }
                         else {
                             // Start polling again if we're still in the foreground
@@ -581,6 +603,64 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                 });
             }
         }).start();
+    }
+
+    private void choosePairingMethod(final ComputerDetails computer) {
+        if (computer.nvidiaServer) {
+            doPair(computer, null, null);
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.syzygy_pair_method_title)
+                .setItems(new CharSequence[]{getString(R.string.syzygy_pair_action),
+                        getString(R.string.pcview_menu_pair_pc), getString(R.string.pcview_menu_pair_pc_otp)},
+                        (dialog, which) -> {
+                            if (which == 0) showSyzygyKeyDialog(computer);
+                            else if (which == 1) doPair(computer, null, null);
+                            else doOTPPair(computer);
+                        })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void showSyzygyKeyDialog(final ComputerDetails computer) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        int padding = (int) (24 * getResources().getDisplayMetrics().density);
+        layout.setPadding(padding, padding, padding, padding);
+        TextView help = new TextView(this);
+        help.setText(R.string.syzygy_existing_key_help);
+        layout.addView(help);
+        EditText keyInput = new EditText(this);
+        keyInput.setId(R.id.syzygyKeyText);
+        keyInput.setHint(R.string.syzygy_key_hint);
+        keyInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        keyInput.setSingleLine(true);
+        keyInput.setSaveEnabled(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            keyInput.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        }
+        layout.addView(keyInput);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.syzygy_pair_action)
+                .setView(layout)
+                .setPositiveButton(R.string.proceed, null)
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        dialog.setOnDismissListener(ignored -> keyInput.setText(""));
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            final String key;
+            try {
+                key = SyzygyPairing.normalizeKey(keyInput.getText().toString());
+            } catch (IllegalArgumentException error) {
+                keyInput.setError(getString(R.string.syzygy_key_invalid));
+                return;
+            }
+            keyInput.setText("");
+            dialog.dismiss();
+            doPair(computer, null, null, key);
+        });
     }
 
     private void doOTPPair(final ComputerDetails computer) {
@@ -775,6 +855,10 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                 doPair(computer.details, null, null);
                 return true;
 
+            case PAIR_ID_SYZYGY:
+                showSyzygyKeyDialog(computer.details);
+                return true;
+
             case PAIR_ID_OTP:
                 doOTPPair(computer.details);
                 return true;
@@ -937,8 +1021,8 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                     // Open the context menu if a PC is offline or refreshing
                     openContextMenu(arg1);
                 } else if (computer.details.pairState != PairState.PAIRED) {
-                    // Pair an unpaired machine by default
-                    doPair(computer.details, null, null);
+                    // Let Syzygy users pair without a PIN or Web UI.
+                    choosePairingMethod(computer.details);
                 } else {
                     doConnect(computer.details);
                 }
