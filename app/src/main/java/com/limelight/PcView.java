@@ -476,7 +476,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     }
 
     private void doPair(final ComputerDetails computer, String otp, String passphrase) {
-        doPair(computer, otp, passphrase, computer.syzygyTailsPairing ? "" : null);
+        doPair(computer, otp, passphrase, canAutomaticallyPair(computer) ? "" : null);
     }
 
     private void doPair(final ComputerDetails computer, String otp, String passphrase, String connectionKey) {
@@ -598,6 +598,8 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                         else {
                             // Start polling again if we're still in the foreground
                             startComputerUpdates();
+                            // A daemon/VPN state change must leave phrase pairing accessible.
+                            if ("".equals(connectionKey)) showSyzygyKeyDialog(computer);
                         }
                     }
                 });
@@ -605,8 +607,15 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
         }).start();
     }
 
+    private boolean canAutomaticallyPair(ComputerDetails computer) {
+        if (!computer.syzygyTailsPairing || computer.activeAddress == null) return false;
+        try {
+            return com.limelight.utils.TailscalePairing.protectedConnection(this, computer.activeAddress.address);
+        } catch (java.io.IOException e) { return false; }
+    }
+
     private void choosePairingMethod(final ComputerDetails computer) {
-        if (computer.syzygyTailsPairing) {
+        if (canAutomaticallyPair(computer)) {
             doPair(computer, null, null, "");
             return;
         }

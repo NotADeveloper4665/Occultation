@@ -43,6 +43,17 @@ public class SyzygyPairingUiTest {
         return ShadowAlertDialog.getLatestAlertDialog();
     }
 
+    @Test public void advertisedAutoPairingStillOffersPhraseWhenVpnIsUnavailable() {
+        ComputerDetails computer = new ComputerDetails();
+        computer.syzygyTailsPairing = true;
+        ReflectionHelpers.callInstanceMethod(activity, "choosePairingMethod",
+                ReflectionHelpers.ClassParameter.from(ComputerDetails.class, computer));
+        AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
+        assertTrue(dialog.isShowing());
+        assertEquals(activity.getString(R.string.syzygy_pair_action),
+                dialog.getListView().getAdapter().getItem(0));
+    }
+
     @Test public void malformedKeyStaysInDialogWithoutStartingPairing() {
         AlertDialog dialog = showKeyDialog();
         EditText input = dialog.findViewById(R.id.syzygyKeyText);

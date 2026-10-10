@@ -203,7 +203,7 @@ public class PairingManager {
             if (!"1".equals(NvHTTP.getXmlString(response, "paired", true))) return PairState.FAILED;
             if (tails) {
                 byte[] serverSignature = SyzygyPairing.decodeHex(NvHTTP.getXmlString(response, "serversignature", true), 8192);
-                java.security.Signature verifier = java.security.Signature.getInstance("SHA256withRSA");
+                java.security.Signature verifier = getSha256SignatureInstanceForKey(candidate.getPublicKey());
                 verifier.initVerify(candidate.getPublicKey());
                 verifier.update(message);
                 verifier.update(serverPem);

@@ -150,7 +150,9 @@ public class AddComputerManually extends AppCompatActivity {
 
                 details.manualAddress = new ComputerDetails.AddressTuple(host, port);
                 success = managerBinder.addComputerBlocking(details);
-                if (success && (!request.key.isEmpty() || details.syzygyTailsPairing)) {
+                if (success && (!request.key.isEmpty() || (details.syzygyTailsPairing &&
+                        details.activeAddress != null && com.limelight.utils.TailscalePairing.protectedConnection(
+                        AddComputerManually.this, details.activeAddress.address)))) {
                     success = managerBinder.pairWithSyzygyKey(details.uuid, request.key);
                     pairingFailed = !success;
                 }
