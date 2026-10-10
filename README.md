@@ -35,8 +35,11 @@ Recording, steady-delay buffering, adaptive bitrate and upscaling ports remain p
 
 ## Development builds
 
-In GitHub Actions, run **Occultation Android**. Download the APK artifacts from
-the successful run. The universal development APK supports ARMv7, ARM64, x86
+Download the [universal development APK](https://github.com/NotADeveloper4665/Occultation/releases/download/dev/Occultation-universal.apk)
+from the [development release](https://github.com/NotADeveloper4665/Occultation/releases/tag/dev).
+Successful builds on the main development branch automatically update these APKs.
+In GitHub Actions, **Occultation Android** also uploads the APKs as artifacts.
+The universal development APK supports ARMv7, ARM64, x86
 and x86-64 and installs alongside Artemide, Artemis and Moonlight.
 
 For local development, use Java 17, Android SDK 36 and NDK `27.0.12077973`:

@@ -1,6 +1,7 @@
 package com.limelight;
 
 import android.app.AlertDialog;
+import android.os.Looper;
 import android.view.View;
 import android.widget.EditText;
 import com.limelight.nvstream.http.ComputerDetails;
@@ -15,6 +16,7 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.util.ReflectionHelpers;
 import static org.junit.Assert.*;
+import static org.robolectric.Shadows.shadowOf;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 33, shadows = {com.limelight.shadows.ShadowMoonBridge.class,
@@ -57,6 +59,7 @@ public class SyzygyPairingUiTest {
         assertEquals(View.IMPORTANT_FOR_AUTOFILL_NO, input.getImportantForAutofill());
         input.setText("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+        shadowOf(Looper.getMainLooper()).idle();
         assertEquals("", input.getText().toString());
     }
 

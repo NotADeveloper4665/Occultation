@@ -11,6 +11,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   development-apk:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -28,6 +30,12 @@ jobs:
       - name: Install Android toolchain
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.0.12077973'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Restore development signing key
+        if: github.event_name != 'pull_request'
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: occultation-development-signing-v1
       - name: Test, lint and build development APKs
         run: bash ./gradlew :app:testNonRoot_gameDebugUnitTest :app:lintNonRoot_gameDebug :app:assembleNonRoot_gameDebug --stacktrace
       - name: Upload development APKs
@@ -36,6 +44,47 @@ jobs:
           name: Occultation-0.1.2-dev-APKs
           path: app/build/outputs/apk/nonRoot_game/debug/*.apk
           if-no-files-found: error
+      - name: Publish downloadable development APKs
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/moonlight-noir'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir release-apks
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
+          root = Path('app/build/outputs/apk/nonRoot_game/debug')
+          metadata = json.loads((root / 'output-metadata.json').read_text())
+          for element in metadata['elements']:
+              abi = next((f['value'] for f in element['filters'] if f['filterType'] == 'ABI'), 'universal')
+              if abi not in ('universal', 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'):
+                  raise SystemExit('Unexpected APK architecture')
+              shutil.copy2(root / element['outputFile'], Path('release-apks') / f'Occultation-{abi}.apk')
+          if not Path('release-apks/Occultation-universal.apk').is_file():
+              raise SystemExit('Universal APK was not built')
+          PY
+          (cd release-apks && sha256sum *.apk > SHA256SUMS)
+          cat > release-notes.md <<EOF
+          Occultation 0.1.2 development build
+
+          - Syzygy PSK pairing from Add Computer, the host pairing chooser, and the host long-press menu.
+          - Pair using the 48-character key printed by Syzygy; no host PIN or Web UI required.
+          - Connection keys are not saved. Reconnection uses the authenticated paired certificate.
+          - Profile-aware direct Desktop connection and granular client input permissions.
+
+          Download **Occultation-universal.apk** for any supported Android device or Waydroid, or choose the APK matching your CPU. Android 5.0 or newer is required. These are debug-signed development APKs, not production releases.
+
+          Source: $GITHUB_SHA
+          Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+          if gh release view dev --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.2 Development' --notes-file release-notes.md --prerelease --latest=false
+          else
+            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.2 Development' --notes-file release-notes.md --prerelease --latest=false
+          fi
+          gh release upload dev release-apks/* --repo "$GITHUB_REPOSITORY" --clobber
       - name: Upload check reports
         if: always()
         uses: actions/upload-artifact@v4
