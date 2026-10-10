@@ -8,16 +8,18 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.util.Locale;
 import javax.crypto.Mac;
+import org.bouncycastle.crypto.generators.SCrypt;
 import javax.crypto.spec.SecretKeySpec;
 
-/** Wire-compatible with Syzygy's generated 192-bit shared connection keys. */
+/** Wire-compatible with Syzygy's generated six-word pairing phrases. */
 public final class SyzygyPairing {
     private SyzygyPairing() {}
 
     public static String normalizeKey(String key) {
-        String normalized = key.trim().toLowerCase(Locale.ROOT);
-        if (!normalized.matches("[0-9a-f]{48}")) {
-            throw new IllegalArgumentException("A Syzygy connection key must contain 48 hexadecimal characters");
+        if (key == null || key.length() > 128) throw new IllegalArgumentException("Invalid pairing phrase");
+        String normalized = key.trim().toLowerCase(Locale.ROOT).replace('-', ' ').replaceAll("\\s+", " ");
+        if (!normalized.matches("[a-z]{1,9}( [a-z]{1,9}){5}")) {
+            throw new IllegalArgumentException("A Syzygy pairing phrase must contain six words");
         }
         return normalized;
     }
@@ -66,10 +68,17 @@ public final class SyzygyPairing {
         return buffer.toByteArray();
     }
 
+    public static String derivedKey(String phrase) {
+        byte[] derived = SCrypt.generate(normalizeKey(phrase).getBytes(StandardCharsets.US_ASCII),
+                "Syzygy pairing phrase v2".getBytes(StandardCharsets.US_ASCII), 32768, 8, 1, 24);
+        try { return hex(derived); }
+        finally { java.util.Arrays.fill(derived, (byte) 0); }
+    }
+
     public static byte[] proof(String key, byte[] message) throws GeneralSecurityException {
         Mac mac = Mac.getInstance("HmacSHA256");
         // The wire protocol uses the hexadecimal text itself as the HMAC key.
-        mac.init(new SecretKeySpec(normalizeKey(key).getBytes(StandardCharsets.US_ASCII), "HmacSHA256"));
+        mac.init(new SecretKeySpec(derivedKey(key).getBytes(StandardCharsets.US_ASCII), "HmacSHA256"));
         return mac.doFinal(message);
     }
 

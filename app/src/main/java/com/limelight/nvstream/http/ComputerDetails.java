@@ -81,6 +81,7 @@ public class ComputerDetails {
     public String runningGameUUID;
     public String rawAppList;
     public boolean nvidiaServer;
+    public boolean syzygyTailsPairing;
 
     // VDisplay info
     public boolean vDisplaySupported = false;
@@ -159,6 +160,7 @@ public class ComputerDetails {
         this.runningGameId = details.runningGameId;
         this.runningGameUUID = details.runningGameUUID;
         this.nvidiaServer = details.nvidiaServer;
+        this.syzygyTailsPairing = details.syzygyTailsPairing;
         this.rawAppList = details.rawAppList;
 
         this.vDisplayDriverReady = details.vDisplayDriverReady;

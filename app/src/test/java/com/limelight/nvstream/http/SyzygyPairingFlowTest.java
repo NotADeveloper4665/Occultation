@@ -20,7 +20,7 @@ import static org.mockito.Mockito.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 33)
 public class SyzygyPairingFlowTest {
-    private static final String KEY = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    private static final String KEY = "abacus abacus abacus abacus abacus abacus";
     private static String xml(String fields) { return "<root status_code=\"200\">" + fields + "</root>"; }
     private static byte[] pem(X509Certificate cert) throws Exception {
         return ("-----BEGIN CERTIFICATE-----\n" + Base64.getMimeEncoder(64, new byte[]{'\n'})
@@ -33,6 +33,9 @@ public class SyzygyPairingFlowTest {
                 .build(new JcaContentSignerBuilder("SHA256withRSA").build(keys.getPrivate())));
     }
     private void exercise(boolean corruptMessage, boolean corruptProof) throws Exception {
+        exercise(corruptMessage, corruptProof, false);
+    }
+    private void exercise(boolean corruptMessage, boolean corruptProof, boolean tails) throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA"); generator.initialize(2048);
         KeyPair keys = generator.generateKeyPair(); X509Certificate cert = certificate(keys);
         byte[] clientPem = pem(cert), serverPem = clientPem;
@@ -43,22 +46,30 @@ public class SyzygyPairingFlowTest {
         when(crypto.getPemEncodedClientCertificate()).thenReturn(clientPem);
         NvHTTP http = mock(NvHTTP.class); when(http.getUniqueId()).thenReturn("android-1");
         byte[] suppliedMessage = message.clone(); if (corruptMessage) suppliedMessage[0] ^= 1;
-        byte[] proof = SyzygyPairing.confirmation(KEY, message, serverPem); if (corruptProof) proof[0] ^= 1;
+        byte[] proof;
+        if (tails) {
+            Signature signer = Signature.getInstance("SHA256withRSA");
+            signer.initSign(keys.getPrivate()); signer.update(message); signer.update(serverPem);
+            proof = signer.sign();
+        } else proof = SyzygyPairing.confirmation(KEY, message, serverPem);
+        if (corruptProof) proof[0] ^= 1;
         when(http.executePairingCommand(startsWith("syzygyphase=challenge&"), eq(true))).thenReturn(xml(
                 "<challenge>"+SyzygyPairing.hex(nonce)+"</challenge><authmessage>"+
                 SyzygyPairing.hex(suppliedMessage)+"</authmessage><plaincert>"+SyzygyPairing.hex(serverPem)+"</plaincert>"));
         when(http.executePairingCommand(startsWith("syzygyphase=response&"), eq(true))).thenAnswer(call -> {
             String request = call.getArgument(0);
-            assertTrue(request.contains("&syzygyproof=" + SyzygyPairing.hex(SyzygyPairing.proof(KEY, message))));
-            String signature = request.substring(request.indexOf("&clientsignature=") + "&clientsignature=".length());
+            assertTrue(request.contains("&syzygyproof=" + (tails ? "" : SyzygyPairing.hex(SyzygyPairing.proof(KEY, message)))));
+            assertEquals(tails, request.contains("&syzygytails=1"));
+            String signature = request.substring(request.indexOf("&clientsignature=") + "&clientsignature=".length()).split("&")[0];
             Signature verifier = Signature.getInstance("SHA256withRSA");
             verifier.initVerify(keys.getPublic()); verifier.update(message);
             assertTrue(verifier.verify(SyzygyPairing.decodeHex(signature, 512)));
-            return xml("<paired>1</paired><serverproof>" + SyzygyPairing.hex(proof) + "</serverproof>");
+            String tag = tails ? "serversignature" : "serverproof";
+            return xml("<paired>1</paired><" + tag + ">" + SyzygyPairing.hex(proof) + "</" + tag + ">");
         });
         when(http.executePairingChallenge()).thenReturn(xml("<paired>1</paired>"));
         PairingManager pairing = new PairingManager(http, crypto);
-        PairingManager.PairState result = pairing.pairWithSyzygyKey(KEY);
+        PairingManager.PairState result = pairing.pairWithSyzygyKey(tails ? "" : KEY);
         if (corruptMessage || corruptProof) {
             assertEquals(PairingManager.PairState.FAILED, result); assertNull(pairing.getPairedCert());
             verify(http, never()).setServerCert(any()); verify(http, never()).executePairingChallenge();
@@ -69,6 +80,9 @@ public class SyzygyPairingFlowTest {
             order.verify(http).setServerCert(cert); order.verify(http).executePairingChallenge();
         }
     }
+    @Test public void completesAutomaticTailscalePairingWithSignedConfirmation() throws Exception { exercise(false, false, true); }
+    @Test public void rejectsForgedTailscaleServerConfirmation() throws Exception { exercise(false, true, true); }
+    @Test public void neverSignsSubstitutedTailscaleChallenge() throws Exception { exercise(true, false, true); }
     @Test public void completesSignedPairingAndPinsConfirmedCertificate() throws Exception { exercise(false, false); }
     @Test public void neverSignsSubstitutedChallenge() throws Exception { exercise(true, false); }
     @Test public void refusesUnauthenticatedServerCertificate() throws Exception { exercise(false, true); }

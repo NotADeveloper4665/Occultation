@@ -183,10 +183,12 @@ public class PairingManager {
     /** Pair without a host-side PIN. The shared key is never retained. */
     public PairState pairWithSyzygyKey(String key) throws IOException, XmlPullParserException {
         serverCert = null;
-        String normalized = SyzygyPairing.normalizeKey(key);
+        final boolean tails = key.isEmpty();
+        String normalized = tails ? "" : SyzygyPairing.normalizeKey(key);
+        String mode = tails ? "&syzygytails=1" : "";
         try {
             String identity = "clientcert=" + SyzygyPairing.hex(pemCertBytes);
-            String response = http.executePairingCommand("syzygyphase=challenge&" + identity, true);
+            String response = http.executePairingCommand("syzygyphase=challenge&" + identity + mode, true);
             byte[] nonce = SyzygyPairing.decodeHex(NvHTTP.getXmlString(response, "challenge", true), 32);
             byte[] message = SyzygyPairing.message(nonce, http.getUniqueId(), pemCertBytes);
             byte[] supplied = SyzygyPairing.decodeHex(NvHTTP.getXmlString(response, "authmessage", true), 1024);
@@ -194,14 +196,23 @@ public class PairingManager {
             byte[] serverPem = SyzygyPairing.decodeHex(NvHTTP.getXmlString(response, "plaincert", true), 16384);
             X509Certificate candidate = (X509Certificate) CertificateFactory.getInstance("X.509")
                     .generateCertificate(new ByteArrayInputStream(serverPem));
-            String proof = SyzygyPairing.hex(SyzygyPairing.proof(normalized, message));
+            String proof = tails ? "" : SyzygyPairing.hex(SyzygyPairing.proof(normalized, message));
             String signature = SyzygyPairing.hex(signData(message, pk));
             response = http.executePairingCommand("syzygyphase=response&" + identity +
-                    "&syzygyproof=" + proof + "&clientsignature=" + signature, true);
+                    "&syzygyproof=" + proof + "&clientsignature=" + signature + mode, true);
             if (!"1".equals(NvHTTP.getXmlString(response, "paired", true))) return PairState.FAILED;
-            byte[] confirmation = SyzygyPairing.decodeHex(NvHTTP.getXmlString(response, "serverproof", true), 32);
-            if (!MessageDigest.isEqual(SyzygyPairing.confirmation(normalized, message, serverPem), confirmation)) {
-                return PairState.FAILED;
+            if (tails) {
+                byte[] serverSignature = SyzygyPairing.decodeHex(NvHTTP.getXmlString(response, "serversignature", true), 8192);
+                java.security.Signature verifier = java.security.Signature.getInstance("SHA256withRSA");
+                verifier.initVerify(candidate.getPublicKey());
+                verifier.update(message);
+                verifier.update(serverPem);
+                if (!verifier.verify(serverSignature)) return PairState.FAILED;
+            } else {
+                byte[] confirmation = SyzygyPairing.decodeHex(NvHTTP.getXmlString(response, "serverproof", true), 32);
+                if (!MessageDigest.isEqual(SyzygyPairing.confirmation(normalized, message, serverPem), confirmation)) {
+                    return PairState.FAILED;
+                }
             }
             // Only authenticate HTTPS against the certificate confirmed by the shared key.
             http.setServerCert(candidate);

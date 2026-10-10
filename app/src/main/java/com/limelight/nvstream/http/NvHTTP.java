@@ -441,6 +441,7 @@ public class NvHTTP {
         details.runningGameUUID = getCurrentGameUUID(serverInfo);
 
         // The MJOLNIR codename was used by GFE but never by any third-party server
+        details.syzygyTailsPairing = "1".equals(getXmlString(serverInfo, "syzygy_tails_pairing", false));
         details.nvidiaServer = getXmlString(serverInfo, "state", true).contains("MJOLNIR");
 
         // We could reach it so it's online

@@ -719,9 +719,9 @@
 
         <string name="title_checkbox_snappy_input">Snappy Input</string>
         <string name="summary_checkbox_snappy_input">Offload input to a background thread and ignore tiny axis/trigger deltas for a smoother feel. </string>
-    <string name="syzygy_key_hint">Syzygy connection key (optional)</string>
-    <string name="syzygy_key_help">Enter the host address above. Paste the key printed by Syzygy to pair without a PIN. Leave this blank for normal PIN pairing. The key is not saved.</string>
-    <string name="syzygy_key_invalid">Enter the 48-character key printed by Syzygy.</string>
+    <string name="syzygy_key_hint">Syzygy pairing phrase (optional)</string>
+    <string name="syzygy_key_help">Enter the host address above. Paste the pairing phrase printed by Syzygy to pair without a PIN. Leave this blank for normal PIN pairing. The key is not saved.</string>
+    <string name="syzygy_key_invalid">Enter the six-word phrase printed by Syzygy.</string>
     <string name="syzygy_pair_failed">Connection-key pairing failed. Check the key and that the host supports Syzygy key pairing, then try again. The host remains in your computer list.</string>
     <string name="eclipse_input_title">Input permissions</string>
     <string name="eclipse_view_only_title">View-only mode</string>
@@ -736,7 +736,7 @@
     <string name="eclipse_desktop_loading">Checking Desktop availability…</string>
     <string name="eclipse_desktop_fallback">Could not start Desktop automatically. Choose an app to connect.</string>
     <string name="syzygy_pair_method_title">Choose pairing method</string>
-    <string name="syzygy_pair_action">Pair with Syzygy key (PSK)</string>
-    <string name="syzygy_existing_key_help">Paste the 48-character key printed by Syzygy with -psk. No PIN or host Web UI is required. The key is used once and is not saved; future connections use this device’s paired certificate.</string>
+    <string name="syzygy_pair_action">Pair with Syzygy phrase</string>
+    <string name="syzygy_existing_key_help">Paste the six-word phrase printed by Syzygy with -psk. No PIN or host Web UI is required. The key is used once and is not saved; future connections use this device’s paired certificate.</string>
 </resources>
 

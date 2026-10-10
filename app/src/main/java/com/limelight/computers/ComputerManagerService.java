@@ -275,6 +275,9 @@ public class ComputerManagerService extends Service {
             synchronized (target.networkLock) {
                 ComputerDetails computer = target.computer;
                 if (computer.activeAddress == null) throw new java.io.IOException("Host is offline");
+                if (key.isEmpty() && !com.limelight.utils.TailscalePairing.protectedConnection(
+                        ComputerManagerService.this, computer.activeAddress.address))
+                    throw new java.io.IOException("Automatic enrollment requires a protected Tailscale connection");
                 NvHTTP http = new NvHTTP(computer.activeAddress, computer.httpsPort,
                         idManager.getUniqueId(), computer.serverCert,
                         PlatformBinding.getCryptoProvider(ComputerManagerService.this));

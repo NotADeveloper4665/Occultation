@@ -476,7 +476,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     }
 
     private void doPair(final ComputerDetails computer, String otp, String passphrase) {
-        doPair(computer, otp, passphrase, null);
+        doPair(computer, otp, passphrase, computer.syzygyTailsPairing ? "" : null);
     }
 
     private void doPair(final ComputerDetails computer, String otp, String passphrase, String connectionKey) {
@@ -606,6 +606,10 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     }
 
     private void choosePairingMethod(final ComputerDetails computer) {
+        if (computer.syzygyTailsPairing) {
+            doPair(computer, null, null, "");
+            return;
+        }
         if (computer.nvidiaServer) {
             doPair(computer, null, null);
             return;

@@ -57,7 +57,7 @@ public class SyzygyPairingUiTest {
         EditText input = dialog.findViewById(R.id.syzygyKeyText);
         assertFalse(input.isSaveEnabled());
         assertEquals(View.IMPORTANT_FOR_AUTOFILL_NO, input.getImportantForAutofill());
-        input.setText("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        input.setText("abacus abacus abacus abacus abacus abacus");
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
         shadowOf(Looper.getMainLooper()).idle();
         assertEquals("", input.getText().toString());

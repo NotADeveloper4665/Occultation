@@ -5,12 +5,12 @@
 Occultation brings Eclipse's Syzygy integration and streaming controls to Android
 while retaining Artemide's mobile decoder work and Moonlight compatibility.
 
-Version `0.1.2-dev` includes Syzygy connection-key pairing, input permissions and direct Desktop connection.
+Version `0.1.3-dev` includes Syzygy connection-key pairing, input permissions and direct Desktop connection.
 
 In **Add Computer**, enter the host address and optionally paste Syzygy's
-48-character connection key. Leave the key blank for normal PIN pairing.
+six-word pairing phrase. Leave the key blank for normal PIN pairing.
 For an automatically discovered or previously added host, tap an unpaired host and
-choose **Pair with Syzygy key (PSK)**, or select that action from its long-press menu.
+choose **Pair with Syzygy phrase**, or select that action from its long-press menu.
 Paste the key from `syzygy -s -auto -headless -psk` and press **Proceed**.
 The key alone is not a host address; the host must be reachable through its IP,
 hostname, or discovery.
@@ -56,3 +56,11 @@ signing key; a debug artifact must not be presented as a production release.
 
 Based on Artemide by DerFlacco, Artemis by ClassicOldSong, and Moonlight Android.
 Existing GPL license and upstream copyright notices remain in effect.
+
+When Syzygy enables `-tails` or its Network auto-authorization setting and verifies
+this connection belongs to its own tailnet, adding or tapping the host pairs
+without a phrase or PIN. This requires connecting through the host's Tailscale
+address, with the Tailscale VPN active on Android 6 or newer. Older Android
+versions use phrase pairing. Full permissions are granted by the host; client input restrictions
+still apply. Shared external nodes are excluded. Phrase pairing remains available
+for other connections; the old 48-character input is no longer accepted.

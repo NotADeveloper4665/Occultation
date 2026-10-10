@@ -150,7 +150,7 @@ public class AddComputerManually extends AppCompatActivity {
 
                 details.manualAddress = new ComputerDetails.AddressTuple(host, port);
                 success = managerBinder.addComputerBlocking(details);
-                if (success && !request.key.isEmpty()) {
+                if (success && (!request.key.isEmpty() || details.syzygyTailsPairing)) {
                     success = managerBinder.pairWithSyzygyKey(details.uuid, request.key);
                     pairingFailed = !success;
                 }
