@@ -1633,15 +1633,17 @@ if (preferLowerDelays) {
                                     // ensure at least one vsync worth when available (fallback: period + 1 ms)
                                     dropThresholdNs = Math.max(dropThresholdNs, (vsyncPeriodNs > 0 ? vsyncPeriodNs : (__spNs + 1_000_000L)));
                                     if (prefs.wanOptimization) dropThresholdNs = 16_000_000L;
-                                    if (lastAgeNs >= dropThresholdNs) {
-                                        int __idxOnce = nextOutputIndex(info, 0);
-                                        if (__idxOnce >= 0) {
-                                            videoDecoder.releaseOutputBuffer(lastIndex, false);
-                                            frameDropped = true; // coalesce one older frame only (justified)
-                                            numFramesOut++;
-                                            lastIndex = __idxOnce;
-                                            presentationTimeUs = info.presentationTimeUs;
-                                        }
+                                    long ageNs = lastAgeNs;
+                                    while (ageNs >= dropThresholdNs) {
+                                        int newer = nextOutputIndex(info, 0);
+                                        if (newer < 0) break; // Preserve visibility when no newer output exists.
+                                        videoDecoder.releaseOutputBuffer(lastIndex, false);
+                                        frameDropped = true;
+                                        numFramesOut++;
+                                        lastIndex = newer;
+                                        presentationTimeUs = info.presentationTimeUs;
+                                        if (!prefs.wanOptimization) break;
+                                        ageNs = System.nanoTime() - presentationTimeUs * 1000L;
                                     }
                                 }
                                 if (prefs.framePacing == PreferenceConfiguration.FRAME_PACING_MAX_SMOOTHNESS ||

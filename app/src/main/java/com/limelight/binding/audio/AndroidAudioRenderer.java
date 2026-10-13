@@ -214,6 +214,8 @@ private static void bumpAudioPriority() {
                     tempo = nextTempo;
                 } catch (IllegalArgumentException | IllegalStateException unsupported) {
                     tempoSupported = false;
+                    try { track.setPlaybackParams(new android.media.PlaybackParams().setPitch(1f).setSpeed(1f)); }
+                    catch (IllegalArgumentException | IllegalStateException ignored) {}
                     LimeLog.info("WAN audio tempo unavailable; using normal bounded audio queue");
                 }
             }
