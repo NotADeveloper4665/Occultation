@@ -45,6 +45,7 @@ import com.limelight.nvstream.jni.MoonBridge;
 
 public class NvConnection {
     private volatile boolean wanStopping;
+    private final Object wanLock = new Object();
     private Thread wanThread;
     // Context parameters
     private LimelightCryptoProvider cryptoProvider;
@@ -102,10 +103,15 @@ public class NvConnection {
     }
 
     public void stop() {
-        wanStopping = true;
-        if (wanThread != null) {
-            wanThread.interrupt();
-            try { wanThread.join(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        final Thread worker;
+        synchronized (wanLock) {
+            wanStopping = true;
+            worker = wanThread;
+            wanThread = null;
+        }
+        if (worker != null) {
+            worker.interrupt();
+            try { worker.join(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
         // Interrupt any pending connection. This is thread-safe.
         MoonBridge.interruptConnection();
@@ -496,23 +502,44 @@ public class NvConnection {
                         return;
                     }
                 }
-                if (context.wanActive && !wanStopping) {
-                    wanThread = new Thread(() -> {
-                        try {
-                            NvHTTP telemetry = new NvHTTP(context.serverAddress, context.httpsPort, uniqueId, context.serverCert, cryptoProvider);
+                synchronized (wanLock) {
+                    if (context.wanActive && !wanStopping) {
+                        wanThread = new Thread(() -> {
+                            WanFeedbackRetry retry = new WanFeedbackRetry();
+                            boolean failed = false;
+                            NvHTTP telemetry = null;
                             while (!wanStopping) {
-                                Thread.sleep(1000);
-                                if (wanStopping) break;
-                                long rtt = MoonBridge.getEstimatedRttInfo();
-                                if (rtt == 0) continue;
-                                int loss = videoDecoderRenderer instanceof com.limelight.binding.video.MediaCodecDecoderRenderer
-                                    ? ((com.limelight.binding.video.MediaCodecDecoderRenderer)videoDecoderRenderer).takeWanLoss() : 0;
-                                telemetry.sendWanFeedback((int)(rtt >> 32), (int)rtt, loss);
+                                try {
+                                    Thread.sleep(retry.getDelayMillis());
+                                    if (wanStopping) break;
+                                    if (telemetry == null) telemetry = new NvHTTP(context.serverAddress, context.httpsPort, uniqueId, context.serverCert, cryptoProvider);
+                                    final long rtt;
+                                    // Serialize native reads with stop/cleanup. An HTTP request
+                                    // may outlive the bounded join, but cannot read JNI afterward.
+                                    synchronized (MoonBridge.class) {
+                                        if (wanStopping) break;
+                                        rtt = MoonBridge.getEstimatedRttInfo();
+                                    }
+                                    if (rtt == 0) continue;
+                                    int loss = videoDecoderRenderer instanceof com.limelight.binding.video.MediaCodecDecoderRenderer
+                                        ? ((com.limelight.binding.video.MediaCodecDecoderRenderer)videoDecoderRenderer).takeWanLoss() : 0;
+                                    telemetry.sendWanFeedback((int)(rtt >> 32), (int)rtt, loss);
+                                    if (failed) LimeLog.info("WAN feedback recovered");
+                                    failed = false;
+                                    retry.succeeded();
+                                } catch (InterruptedException expected) {
+                                    Thread.currentThread().interrupt();
+                                    break;
+                                } catch (IOException | XmlPullParserException e) {
+                                    if (wanStopping) break;
+                                    if (!failed) LimeLog.warning("WAN feedback unavailable; retrying with conservative host fallback: " + e.getMessage());
+                                    failed = true;
+                                    retry.failed();
+                                }
                             }
-                        } catch (InterruptedException expected) { Thread.currentThread().interrupt(); }
-                        catch (Exception e) { LimeLog.warning("WAN feedback unavailable; conservative host fallback: " + e.getMessage()); }
-                    }, "WAN feedback");
-                    wanThread.start();
+                        }, "WAN feedback");
+                        wanThread.start();
+                    }
                 }
             }
         }).start();
