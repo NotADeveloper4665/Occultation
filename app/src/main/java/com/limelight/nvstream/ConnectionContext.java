@@ -7,6 +7,7 @@ import java.security.cert.X509Certificate;
 import javax.crypto.SecretKey;
 
 public class ConnectionContext {
+    public boolean wanActive;
     public ComputerDetails.AddressTuple serverAddress;
     public int httpsPort;
     public boolean isNvidiaServerSoftware;

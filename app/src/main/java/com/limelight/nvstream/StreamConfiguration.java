@@ -31,10 +31,14 @@ public class StreamConfiguration {
     private int colorSpace;
     private boolean persistGamepadsAfterDisconnect;
     private boolean enableUltraLowLatency;
+    private boolean wanOptimization;
+    public boolean getWanOptimization() { return wanOptimization; }
 
     public static class Builder {
         private StreamConfiguration config = new StreamConfiguration();
         
+        public Builder setWanOptimization(boolean enabled) { config.wanOptimization = enabled; return this; }
+
         public StreamConfiguration.Builder setApp(NvApp app) {
             config.app = app;
             return this;

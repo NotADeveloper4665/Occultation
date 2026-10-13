@@ -44,6 +44,8 @@ import com.limelight.nvstream.input.MouseButtonPacket;
 import com.limelight.nvstream.jni.MoonBridge;
 
 public class NvConnection {
+    private volatile boolean wanStopping;
+    private Thread wanThread;
     // Context parameters
     private LimelightCryptoProvider cryptoProvider;
     private String uniqueId;
@@ -100,6 +102,11 @@ public class NvConnection {
     }
 
     public void stop() {
+        wanStopping = true;
+        if (wanThread != null) {
+            wanThread.interrupt();
+            try { wanThread.join(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        }
         // Interrupt any pending connection. This is thread-safe.
         MoonBridge.interruptConnection();
 
@@ -237,6 +244,8 @@ public class NvConnection {
         NvHTTP h = new NvHTTP(context.serverAddress, context.httpsPort, uniqueId, context.serverCert, cryptoProvider);
 
         String serverInfo = h.getServerInfo(true);
+        context.wanActive = context.streamConfig.getWanOptimization() && h.supportsWan(serverInfo);
+        if (context.streamConfig.getWanOptimization() && !context.wanActive) LimeLog.info("Host lacks WAN mode; host uses normal streaming settings");
         
         context.serverAppVersion = h.getServerVersion(serverInfo);
         if (context.serverAppVersion == null) {
@@ -486,6 +495,24 @@ public class NvConnection {
                         connectionAllowed.release();
                         return;
                     }
+                }
+                if (context.wanActive && !wanStopping) {
+                    wanThread = new Thread(() -> {
+                        try {
+                            NvHTTP telemetry = new NvHTTP(context.serverAddress, context.httpsPort, uniqueId, context.serverCert, cryptoProvider);
+                            while (!wanStopping) {
+                                Thread.sleep(1000);
+                                if (wanStopping) break;
+                                long rtt = MoonBridge.getEstimatedRttInfo();
+                                if (rtt == 0) continue;
+                                int loss = videoDecoderRenderer instanceof com.limelight.binding.video.MediaCodecDecoderRenderer
+                                    ? ((com.limelight.binding.video.MediaCodecDecoderRenderer)videoDecoderRenderer).takeWanLoss() : 0;
+                                telemetry.sendWanFeedback((int)(rtt >> 32), (int)rtt, loss);
+                            }
+                        } catch (InterruptedException expected) { Thread.currentThread().interrupt(); }
+                        catch (Exception e) { LimeLog.warning("WAN feedback unavailable; conservative host fallback: " + e.getMessage()); }
+                    }, "WAN feedback");
+                    wanThread.start();
                 }
             }
         }).start();

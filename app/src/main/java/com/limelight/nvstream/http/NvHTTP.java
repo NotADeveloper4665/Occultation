@@ -849,6 +849,17 @@ public class NvHTTP {
         return new String(hexChars);
     }
     
+    public boolean supportsWan(String serverInfo) throws IOException, XmlPullParserException {
+        return "1".equals(getXmlString(serverInfo, "SyzygyWanVersion", false));
+    }
+
+    public void sendWanFeedback(int rtt, int jitter, int loss) throws IOException, XmlPullParserException {
+        String reply = openHttpConnectionToString(httpClientShortConnectTimeout, getHttpsUrl(true), "wan",
+            "rtt="+rtt+"&jitter="+jitter+"&loss="+loss);
+        // getXmlString validates the XML status before reading a supported field.
+        getXmlString(reply, "fec", true);
+    }
+
     public boolean launchApp(ConnectionContext context, String verb, String appUUID, int appId, boolean enableHdr) throws IOException, XmlPullParserException {
         // Using an FPS value over 60 causes SOPS to default to 720p60,
         // so force it to 0 to ensure the correct resolution is set. We
@@ -881,6 +892,7 @@ public class NvHTTP {
         String xmlStr = openHttpConnectionToString(httpClientLongConnectNoReadTimeout, getHttpsUrl(true), verb,
             "appid=" + appId +
             (appUUID == null ? "" : ("&appuuid=" + appUUID)) +
+            (context.wanActive ? "&wan=1" : "") +
             "&mode=" + context.negotiatedWidth + "x" + context.negotiatedHeight + "x" + fpsInt +
             "&scaleFactor=" + context.streamConfig.getResolutionScaleFactor() +
             "&additionalStates=1&sops=" + (enableSops ? 1 : 0) +

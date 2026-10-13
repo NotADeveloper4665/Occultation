@@ -368,6 +368,7 @@ public class PreferenceConfiguration {
     public int vibrateFallbackToDeviceStrength;
     public boolean touchscreenTrackpad;
     public MoonBridge.AudioConfiguration audioConfiguration;
+    public boolean wanOptimization;
     public int framePacing;
     public boolean absoluteMouseMode;
     public boolean enableAudioFx;
@@ -860,6 +861,11 @@ private static int getFramePacingValue(Context context) {
 
         config.videoFormat = getVideoFormatValue(context);
         config.framePacing = getFramePacingValue(context);
+        config.wanOptimization = prefs.getBoolean("wan_optimization", false);
+        if (config.wanOptimization) {
+            config.framePacing = FRAME_PACING_MIN_LATENCY;
+            config.framePacingWarpFactor = 0;
+        }
         config.preferLowerDelays = getPreferLowerDelays(context);
         // Big cores preference (non-root)
         config.preferBigCores = prefs.getBoolean(PREFER_BIG_CORES_PREF_STRING, false);
@@ -872,6 +878,7 @@ private static int getFramePacingValue(Context context) {
             config.framePacingWarpFactor = 4;
         }
 
+        if (config.wanOptimization) config.framePacingWarpFactor = 0;
         config.analogStickForScrolling = getAnalogStickForScrollingValue(context);
 
         config.deadzonePercentage = prefs.getInt(DEADZONE_PREF_STRING, DEFAULT_DEADZONE);

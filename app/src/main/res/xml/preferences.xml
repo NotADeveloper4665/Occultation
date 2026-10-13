@@ -9,6 +9,11 @@
         android:title="@string/category_video_settings"
         app:initialExpandedChildrenCount="3"
         app:iconSpaceReserved="false">
+        <SwitchPreference
+            android:key="wan_optimization"
+            android:title="WAN / 5G Optimization"
+            android:summary="Use smaller packets, responsive rendering and compatible Syzygy network adaptation. Unsupported host features keep normal behavior. Applies to the next stream."
+            android:defaultValue="false" />
         <ListPreference
             android:defaultValue="1280x720"
             android:entries="@array/resolution_names"

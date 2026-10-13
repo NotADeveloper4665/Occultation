@@ -29,8 +29,15 @@ private static void bumpAudioPriority() {
     private final boolean enableAudioFx;
 
     private AudioTrack track;
+    private boolean wanOptimization;
+    private boolean tempoSupported = true;
+    private float tempo = 1f;
 
     public AndroidAudioRenderer(Context context, boolean enableAudioFx) {
+        this(context, enableAudioFx, false);
+    }
+    public AndroidAudioRenderer(Context context, boolean enableAudioFx, boolean wan) {
+        this.wanOptimization = wan;
         this.context = context;
         this.enableAudioFx = enableAudioFx;
     }
@@ -198,7 +205,20 @@ private static void bumpAudioPriority() {
     @Override
     public void playDecodedAudio(short[] audioData) {
         // Only queue up to 40 ms of pending audio data in addition to what AudioTrack is buffering for us.
-        if (MoonBridge.getPendingAudioDuration() < 40) {
+        int pending = MoonBridge.getPendingAudioDuration();
+        if (wanOptimization && tempoSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            float nextTempo = pending > 15 ? 1.01f : 1f;
+            if (tempo != nextTempo) {
+                try {
+                    track.setPlaybackParams(new android.media.PlaybackParams().setPitch(1f).setSpeed(nextTempo));
+                    tempo = nextTempo;
+                } catch (IllegalArgumentException | IllegalStateException unsupported) {
+                    tempoSupported = false;
+                    LimeLog.info("WAN audio tempo unavailable; using normal bounded audio queue");
+                }
+            }
+        }
+        if (pending < (wanOptimization ? 30 : 40)) {
             // This will block until the write is completed. That can cause a backlog
             // of pending audio data, so we do the above check to be able to bound
             // latency at 40 ms in that situation.

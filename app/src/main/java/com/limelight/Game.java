@@ -750,6 +750,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             chosenFrameRate *= prefConfig.framePacingWarpFactor;
         }
 
+        if (prefConfig.wanOptimization) {
+            supportedVideoFormats &= MoonBridge.VIDEO_FORMAT_H264 | MoonBridge.VIDEO_FORMAT_AV1_MAIN8;
+            if (supportedVideoFormats == 0) supportedVideoFormats = MoonBridge.VIDEO_FORMAT_H264;
+        }
         StreamConfiguration config = new StreamConfiguration.Builder()
                 .setResolution(
                         displayWidth,
@@ -764,7 +768,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .setBitrate(isMetered ? prefConfig.meteredBitrate: prefConfig.bitrate)
                 .setEnableSops(prefConfig.enableSops)
                 .enableLocalAudioPlayback(prefConfig.playHostAudio)
-                .setMaxPacketSize(1392)
+                .setMaxPacketSize(prefConfig.wanOptimization ? 1024 : 1392)
+                .setWanOptimization(prefConfig.wanOptimization)
                 .setRemoteConfiguration(StreamConfiguration.STREAM_CFG_AUTO) // NvConnection will perform LAN and VPN detection
                 .setSupportedVideoFormats(supportedVideoFormats)
                 .setAttachedGamepadMask(prefConfig.viewOnly || !prefConfig.allowController ? 0 : gamepadMask)
@@ -3768,7 +3773,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             UiHelper.notifyStreamConnecting(Game.this);
 
             decoderRenderer.setRenderTarget(holder.getSurface());
-            conn.start(new AndroidAudioRenderer(Game.this, prefConfig.enableAudioFx),
+            conn.start(new AndroidAudioRenderer(Game.this, prefConfig.enableAudioFx, prefConfig.wanOptimization),
                     decoderRenderer, Game.this);
         }
 

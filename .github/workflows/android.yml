@@ -41,7 +41,7 @@ jobs:
       - name: Upload development APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Occultation-0.1.3-dev-APKs
+          name: Occultation-0.1.4-dev-APKs
           path: app/build/outputs/apk/nonRoot_game/debug/*.apk
           if-no-files-found: error
       - name: Publish downloadable development APKs
@@ -67,8 +67,10 @@ jobs:
           PY
           (cd release-apks && sha256sum *.apk > SHA256SUMS)
           cat > release-notes.md <<EOF
-          Occultation 0.1.3 development build
+          Occultation 0.1.4 development build
 
+          - WAN / 5G Optimization: smaller packets, responsive presentation, compatible Syzygy feedback and bounded audio tempo adaptation.
+          - Host/encoder/audio capabilities keep normal behavior when unsupported. This is a development preview; real cellular performance remains unverified.
           - Syzygy phrase pairing from Add Computer, the host pairing chooser, and the host long-press menu.
           - Automatic full-permission pairing when Syzygy enables -tails and verifies this device in the same tailnet.
           - Pair using the six-word phrase printed by Syzygy; no host PIN or Web UI required.
@@ -81,9 +83,9 @@ jobs:
           Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           EOF
           if gh release view dev --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.3 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.4 Development' --notes-file release-notes.md --prerelease --latest=false
           else
-            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.3 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.4 Development' --notes-file release-notes.md --prerelease --latest=false
           fi
           gh release upload dev release-apks/* --repo "$GITHUB_REPOSITORY" --clobber
       - name: Upload check reports

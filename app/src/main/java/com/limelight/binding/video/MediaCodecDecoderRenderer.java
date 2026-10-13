@@ -43,6 +43,13 @@ import android.view.Choreographer;
 import android.view.Surface;
 
 public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements Choreographer.FrameCallback {
+    private final java.util.concurrent.atomic.AtomicInteger wanMissing = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger wanReceived = new java.util.concurrent.atomic.AtomicInteger();
+    public int takeWanLoss() {
+        int lost = wanMissing.getAndSet(0), received = wanReceived.getAndSet(0);
+        return lost+received > 0 ? (int)(1000L*lost/(lost+received)) : 0;
+    }
+
 
 
     // --- Sticky CPU affinity (keep pin alive for whole streaming session) ---
@@ -1625,6 +1632,7 @@ if (preferLowerDelays) {
                                     long dropThresholdNs = (long)(__spNs * 1.35);
                                     // ensure at least one vsync worth when available (fallback: period + 1 ms)
                                     dropThresholdNs = Math.max(dropThresholdNs, (vsyncPeriodNs > 0 ? vsyncPeriodNs : (__spNs + 1_000_000L)));
+                                    if (prefs.wanOptimization) dropThresholdNs = 16_000_000L;
                                     if (lastAgeNs >= dropThresholdNs) {
                                         int __idxOnce = nextOutputIndex(info, 0);
                                         if (__idxOnce >= 0) {
@@ -2111,6 +2119,7 @@ if (preferLowerDelays) {
         } else if (frameNumber != lastFrameNumber && frameNumber != lastFrameNumber + 1) {
             // We can receive the same "frame" multiple times if it's an IDR frame.
             // In that case, each frame start NALU is submitted independently.
+            wanMissing.addAndGet(frameNumber-lastFrameNumber-1);
             activeWindowVideoStats.framesLost += frameNumber - lastFrameNumber - 1;
             activeWindowVideoStats.totalFrames += frameNumber - lastFrameNumber - 1;
             activeWindowVideoStats.frameLossEvents++;
@@ -2442,6 +2451,7 @@ if (preferLowerDelays) {
         activeWindowVideoStats.maxHostProcessingLatency = (char) Math.max(activeWindowVideoStats.maxHostProcessingLatency, frameHostProcessingLatency);
         activeWindowVideoStats.totalHostProcessingLatency += frameHostProcessingLatency;
 
+        wanReceived.incrementAndGet();
         activeWindowVideoStats.totalFramesReceived++;
         activeWindowVideoStats.totalFrames++;
 
