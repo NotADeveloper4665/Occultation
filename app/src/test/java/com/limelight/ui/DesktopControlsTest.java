@@ -97,4 +97,28 @@ public class DesktopControlsTest {
         assertEquals(0, mouse.get()); assertEquals(0, keys.get());
     }
 
+    @Test public void clusterShortcutReleasesInReverseOrderAndCanBecomeBuiltin() {
+        DesktopControlsView view = overlay(new AtomicInteger());
+        com.limelight.overlay.OverlayLayout layout = com.limelight.overlay.OverlayLayout.defaults();
+        layout.items.get(2).assign("key", new int[]{0x43, 0xA2});
+        java.util.List<String> events = new java.util.ArrayList<>();
+        view.setConfiguration(layout, (key, down) -> events.add(key + ":" + down));
+        android.widget.Button key = (android.widget.Button) view.getChildAt(2);
+        assertEquals("C + Ctrl", key.getText().toString());
+        MotionEvent down = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1, 1, 0);
+        key.dispatchTouchEvent(down); down.recycle(); view.releaseKeys();
+        assertEquals(java.util.Arrays.asList("162:true", "67:true", "67:false", "162:false"), events);
+        layout.items.get(2).assign("mouse", null);
+        view.setConfiguration(layout, (code, pressed) -> {});
+        assertTrue(view.getChildAt(2) instanceof android.widget.ImageButton);
+        assertEquals("Full-screen mouse", view.getChildAt(2).getContentDescription().toString());
+    }
+    @Test public void deletedClusterButtonDisappearsFromRendering() {
+        DesktopControlsView view = overlay(new AtomicInteger());
+        com.limelight.overlay.OverlayLayout layout = com.limelight.overlay.OverlayLayout.defaults();
+        layout.deleteButton("keyboard");
+        view.setConfiguration(layout, (key, down) -> {});
+        assertEquals(4, view.getChildCount());
+    }
+
 }

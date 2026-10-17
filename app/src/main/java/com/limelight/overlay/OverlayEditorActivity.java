@@ -39,6 +39,7 @@ public class OverlayEditorActivity extends Activity {
         super.onCreate(state);
         store = new OverlayStore(this);
         layout = state != null && state.containsKey("layout") ? new com.google.gson.Gson().fromJson(state.getString("layout"), OverlayLayout.class) : store.active().copy();
+        layout.upgrade();
         dirty = state != null && state.getBoolean("dirty");
         pendingExport = state == null ? null : state.getString("export");
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
@@ -81,19 +82,31 @@ public class OverlayEditorActivity extends Activity {
         root.addView(previewArea, new LinearLayout.LayoutParams(-1, 0, 1));
         TextView hint = new TextView(this); hint.setText("Drag a control to move it. Select a control below to change its size. Game name must match the launched app.");
         hint.setTextColor(0xFFCEC2DD); hint.setTextSize(12); root.addView(hint);
-        LinearLayout tools = row(root);
-        controls = new Spinner(this); tools.addView(controls, new LinearLayout.LayoutParams(dp(185), dp(48)));
-        action(tools, "Add key", () -> pickKey(null));
-        action(tools, "Change key", () -> { if (selected != null && "key".equals(selected.type)) pickKey(selected); else toast("Select a custom key button first"); });
-        action(tools, "Remove key", () -> {
-            if (selected != null && "key".equals(selected.type)) { syncFields(); layout.items.remove(selected); selected = null; loadPreview(); dirty = true; }
-            else toast("Built-in controls stay available. Select a custom key button to remove it.");
+        controls = new Spinner(this); root.addView(controls, new LinearLayout.LayoutParams(-1, dp(40)));
+        LinearLayout tools = new LinearLayout(this); root.addView(tools, new LinearLayout.LayoutParams(-1, dp(48)));
+        visibleAction(tools, "Add button", () -> chooseFunction(null));
+        visibleAction(tools, "Assign action", () -> {
+            if (selected != null && selected.editableButton()) chooseFunction(selected);
+            else toast("Select a button. The eye and trackpad are dedicated controls.");
         });
-        action(tools, "Reset positions", () -> new AlertDialog.Builder(this).setMessage("Reset the five built-in controls to their default positions and sizes?")
+        visibleAction(tools, "Delete button", () -> {
+            if (selected == null || !selected.editableButton()) { toast("The eye and trackpad stay available. Select a button to delete it."); return; }
+            OverlayLayout.Item target = selected;
+            new AlertDialog.Builder(this).setTitle("Delete " + target.label() + "?")
+                    .setMessage("This removes the button from this layout. Save to keep the change.")
+                    .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d,w) -> {
+                        syncFields(); layout.deleteButton(target.id); selected = null; loadPreview(); dirty = true;
+                    }).show();
+        });
+        action(actions, "Reset positions", () -> new AlertDialog.Builder(this).setMessage("Reset the five built-in controls to their default positions and sizes?")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset", (d,w) -> {
                     syncFields();
                     for (OverlayLayout.Item item : OverlayLayout.defaults().items) {
-                        for (int i = 0; i < layout.items.size(); i++) if (layout.items.get(i).type.equals(item.type)) { layout.items.set(i, item); break; }
+                        for (OverlayLayout.Item current : layout.items) if (current.id.equals(item.id)) {
+                            current.x = item.x; current.y = item.y; current.size = item.size;
+                            current.width = item.width; current.height = item.height;
+                            break;
+                        }
                     }
                     loadPreview(); dirty = true;
                 }).show());
@@ -133,6 +146,11 @@ public class OverlayEditorActivity extends Activity {
         LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); scroll.addView(row);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, dp(48))); return row;
     }
+    private void visibleAction(LinearLayout row, String text, Runnable action) {
+        Button button = new Button(this); button.setText(text); button.setAllCaps(false); button.setTextSize(11);
+        button.setPadding(0, 0, 0, 0); button.setOnClickListener(v -> action.run());
+        row.addView(button, new LinearLayout.LayoutParams(0, dp(48), 1));
+    }
     private void action(LinearLayout row, String text, Runnable action) {
         Button button = new Button(this); button.setText(text); button.setAllCaps(false); button.setTextSize(12);
         button.setOnClickListener(v -> action.run()); row.addView(button, new LinearLayout.LayoutParams(-2, dp(48)));
@@ -163,16 +181,80 @@ public class OverlayEditorActivity extends Activity {
         for (int i = 0; i < names.length; i++) names[i] = list.get(i).name + (list.get(i).game.isEmpty() ? "" : " — " + list.get(i).game);
         new AlertDialog.Builder(this).setTitle("Saved overlay layouts").setItems(names, (d,w) -> { layout = list.get(w).copy(); loadPreview(); dirty = false; }).show();
     }
-    private void pickKey(OverlayLayout.Item existing) {
+    private void chooseFunction(OverlayLayout.Item existing) {
         syncFields();
-        Map<Integer, String> keys = OverlayKeys.all(); List<Integer> codes = new ArrayList<>(keys.keySet());
-        new AlertDialog.Builder(this).setTitle("Choose a keyboard key")
-                .setItems(keys.values().toArray(new String[0]), (d,w) -> {
-                    if (existing == null && layout.items.size() >= 69) { toast("Use at most 64 custom key buttons"); return; }
-                    OverlayLayout.Item item = existing == null ? new OverlayLayout.Item(UUID.randomUUID().toString(), "key", .5f, .5f, .12f) : existing;
-                    item.key = codes.get(w); if (existing == null) layout.items.add(item);
-                    loadPreview(); controls.setSelection(layout.items.indexOf(item)); select(item); dirty = true;
+        String[] actions = {"Keyboard key", "Keyboard shortcut", "Show keyboard", "Windows / Super key",
+                "Toggle full-screen mouse", "Show / hide controls", "Other keyboard key code"};
+        new AlertDialog.Builder(this).setTitle(existing == null ? "Add button" : "Assign button action")
+                .setItems(actions, (d,w) -> {
+                    switch (w) {
+                        case 0: pickKey(existing); break;
+                        case 1: pickShortcut(existing); break;
+                        case 2: applyBinding(existing, "keyboard", null); break;
+                        case 3: applyBinding(existing, "home", null); break;
+                        case 4: applyBinding(existing, "mouse", null); break;
+                        case 5: applyBinding(existing, "eye", null); break;
+                        case 6: pickKeyCode(existing); break;
+                    }
                 }).show();
+    }
+    private void applyBinding(OverlayLayout.Item existing, String function, int[] keys) {
+        if (existing == null && layout.items.size() >= 69) { toast("Use at most 67 buttons"); return; }
+        OverlayLayout.Item item = existing == null ? new OverlayLayout.Item(UUID.randomUUID().toString(), "key", .5f, .5f, .12f) : existing;
+        item.assign(function, keys);
+        if (existing == null) layout.items.add(item);
+        loadPreview(); controls.setSelection(layout.items.indexOf(item)); select(item); dirty = true;
+    }
+    private void pickKey(OverlayLayout.Item existing) {
+        Map<Integer, String> keys = OverlayKeys.all();
+        LinearLayout pane = new LinearLayout(this); pane.setOrientation(LinearLayout.VERTICAL);
+        EditText search = new EditText(this); search.setHint("Search keyboard keys"); search.setSingleLine(true); pane.addView(search);
+        ListView list = new ListView(this); pane.addView(list, new LinearLayout.LayoutParams(-1, dp(260)));
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>(keys.values()));
+        list.setAdapter(adapter);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Choose a keyboard key").setView(pane).setNegativeButton("Cancel", null).create();
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            String label = adapter.getItem(position);
+            for (Map.Entry<Integer,String> entry : keys.entrySet()) if (entry.getValue().equals(label)) {
+                applyBinding(existing, "key", new int[]{entry.getKey()}); dialog.dismiss(); break;
+            }
+        });
+        search.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) { adapter.getFilter().filter(s); }
+            public void afterTextChanged(Editable s) {}
+        });
+        dialog.show();
+    }
+    private void pickShortcut(OverlayLayout.Item existing) {
+        Map<Integer,String> keys = OverlayKeys.all(); List<Integer> codes = new ArrayList<>(keys.keySet());
+        java.util.Set<Integer> chosen = new java.util.LinkedHashSet<>();
+        if (existing != null && "key".equals(existing.function())) for (int code : existing.keyboardKeys()) chosen.add(code);
+        boolean[] checked = new boolean[codes.size()]; for (int i = 0; i < checked.length; i++) checked[i] = chosen.contains(codes.get(i));
+        new AlertDialog.Builder(this).setTitle("Choose keys together (for example Ctrl + C)")
+                .setMultiChoiceItems(keys.values().toArray(new String[0]), checked, (dialog,w,on) -> {
+                    if (on && chosen.size() >= 8 && !chosen.contains(codes.get(w))) {
+                        ((AlertDialog) dialog).getListView().setItemChecked(w, false); toast("Choose at most eight keys");
+                    } else if (on) chosen.add(codes.get(w)); else chosen.remove(codes.get(w));
+                }).setNegativeButton("Cancel", null).setPositiveButton("Assign", (d,w) -> {
+                    if (chosen.isEmpty()) { toast("Choose at least one key"); return; }
+                    int[] binding = new int[chosen.size()]; int index = 0; for (int code : chosen) binding[index++] = code;
+                    applyBinding(existing, "key", binding);
+                }).show();
+    }
+    private void pickKeyCode(OverlayLayout.Item existing) {
+        EditText code = new EditText(this); code.setSingleLine(true); code.setHint("Hex code, for example E8 or 0xE8");
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Other keyboard key")
+                .setMessage("Use a virtual-key code from 08 to FE. Support depends on the host OS. The button label is generated automatically.")
+                .setView(code).setNegativeButton("Cancel", null).setPositiveButton("Assign", null).create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            try {
+                int value = Integer.parseInt(code.getText().toString().trim().replaceFirst("(?i)^0x", ""), 16);
+                if (!OverlayKeys.supported(value)) throw new IllegalArgumentException();
+                applyBinding(existing, "key", new int[]{value}); dialog.dismiss();
+            } catch (RuntimeException e) { code.setError("Enter a hexadecimal code from 08 to FE"); }
+        }));
+        dialog.show();
     }
     private boolean save() {
         try { syncFields(); store.save(layout); dirty = false; toast("Layout saved and selected"); return true; }

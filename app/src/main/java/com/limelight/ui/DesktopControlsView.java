@@ -11,6 +11,7 @@ import android.widget.ImageButton;
 import android.widget.Button;
 import android.view.Gravity;
 import com.limelight.overlay.OverlayLayout;
+import com.limelight.overlay.OverlayKeys;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.HashSet;
@@ -30,7 +31,7 @@ public final class DesktopControlsView extends FrameLayout {
     public interface Selection { void select(OverlayLayout.Item item); }
     private OverlayLayout layout = OverlayLayout.defaults();
     private final Map<String, View> controls = new LinkedHashMap<>();
-    private final Map<View, Integer> pressedButtons = new LinkedHashMap<>();
+    private final Map<View, int[]> pressedButtons = new LinkedHashMap<>();
     private KeyInput keyInput = (key, down) -> {};
     private Selection selection;
     private OverlayLayout.Item dragging;
@@ -110,6 +111,12 @@ public final class DesktopControlsView extends FrameLayout {
     }
 
     private void updateTrackpad() {
+        for (OverlayLayout.Item item : layout.items) {
+            View view = controls.get(item.id);
+            if (view != null && "mouse".equals(item.function())) {
+                view.setSelected(fullScreen); view.setAlpha(fullScreen ? 1f : .7f);
+            }
+        }
         trackpad.setVisibility(controlsVisible && !fullScreen ? VISIBLE : INVISIBLE);
     }
 
@@ -118,42 +125,60 @@ public final class DesktopControlsView extends FrameLayout {
         releaseKeys();
         layout = value;
         keyInput = input;
-        for (View view : new java.util.ArrayList<>(controls.values())) {
-            if (view instanceof Button) removeView(view);
-        }
+        removeAllViews();
         controls.clear();
         for (OverlayLayout.Item item : layout.items) {
             View view;
-            switch (item.type) {
-                case "eye": view = eye; break;
-                case "keyboard": view = keyboard; break;
-                case "home": view = home; break;
-                case "mouse": view = mouse; break;
-                case "trackpad": view = trackpad; break;
-                default:
-                    Button key = new Button(getContext());
-                    key.setText(item.label()); key.setTextColor(0xFFF4EAFF);
-                    key.setTextSize(11); key.setAllCaps(false); key.setGravity(Gravity.CENTER);
-                    key.setPadding(dp(3), 0, dp(3), 0); key.setBackground(background(true));
-                    key.setContentDescription(item.label()); key.setFocusable(false);
-                    key.setOnTouchListener((v, event) -> {
-                        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                            boolean held = pressedButtons.containsValue(item.key);
-                            pressedButtons.put(v, item.key);
-                            if (!held) keyInput.send(item.key, true);
-                            v.setAlpha(1f);
-                        } else if (event.getActionMasked() == MotionEvent.ACTION_UP
-                                || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                            Integer released = pressedButtons.remove(v);
-                            if (released != null && !pressedButtons.containsValue(released)) keyInput.send(released, false);
-                            v.setAlpha(.8f);
-                        }
-                        return true;
-                    });
-                    key.setAlpha(.8f); addView(key); view = key;
+            if ("trackpad".equals(item.type)) view = trackpad;
+            else if ("eye".equals(item.type)) view = eye;
+            else if ("key".equals(item.function())) {
+                Button key = new Button(getContext());
+                key.setText(item.label()); key.setTextColor(0xFFF4EAFF);
+                key.setTextSize(11); key.setAllCaps(false); key.setGravity(Gravity.CENTER);
+                key.setPadding(dp(3), 0, dp(3), 0); key.setBackground(background(true));
+                key.setContentDescription(item.label()); key.setFocusable(false);
+                key.setOnTouchListener((v, event) -> {
+                    if (event.getActionMasked() == MotionEvent.ACTION_DOWN && !pressedButtons.containsKey(v)) {
+                        Set<Integer> previouslyHeld = heldKeys();
+                        int[] codes = orderedKeys(item.keyboardKeys());
+                        pressedButtons.put(v, codes);
+                        for (int code : codes) if (!previouslyHeld.contains(code)) keyInput.send(code, true);
+                        v.setAlpha(1f);
+                    } else if (event.getActionMasked() == MotionEvent.ACTION_UP
+                            || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                        int[] released = pressedButtons.remove(v);
+                        Set<Integer> stillHeld = heldKeys();
+                        if (released != null) for (int i = released.length - 1; i >= 0; i--)
+                            if (!stillHeld.contains(released[i])) keyInput.send(released[i], false);
+                        v.setAlpha(.8f);
+                    }
+                    return true;
+                });
+                key.setAlpha(.8f); view = key;
+            } else {
+                int icon = "keyboard".equals(item.function()) ? R.drawable.ic_desktop_keyboard
+                        : "home".equals(item.function()) ? R.drawable.ic_desktop_home
+                        : "mouse".equals(item.function()) ? R.drawable.ic_desktop_mouse : R.drawable.ic_desktop_eye;
+                ImageButton button = new ImageButton(getContext());
+                button.setImageResource(icon); button.setBackground(background(true));
+                button.setPadding(dp(14), dp(14), dp(14), dp(14));
+                button.setScaleType(ImageButton.ScaleType.FIT_CENTER); button.setFocusable(false);
+                button.setContentDescription(item.label());
+                button.setOnClickListener(v -> {
+                    switch (item.function()) {
+                        case "keyboard": keyboard.performClick(); break;
+                        case "home": home.performClick(); break;
+                        case "mouse": mouse.performClick(); break;
+                        case "eye": eye.performClick(); break;
+                    }
+                });
+                view = button;
             }
+            addView(view);
+            if (view != eye && view != trackpad) view.setVisibility(controlsVisible ? VISIBLE : INVISIBLE);
             controls.put(item.id, view);
         }
+        updateTrackpad();
         requestLayout();
     }
 
@@ -169,8 +194,25 @@ public final class DesktopControlsView extends FrameLayout {
         editing = true; selection = listener;
     }
 
+    private Set<Integer> heldKeys() {
+        Set<Integer> held = new HashSet<>();
+        for (int[] keys : pressedButtons.values()) for (int key : keys) held.add(key);
+        return held;
+    }
+
+    private static int[] orderedKeys(int[] keys) {
+        int[] ordered = new int[keys.length]; int index = 0;
+        for (int key : keys) if (OverlayKeys.modifier(key)) ordered[index++] = key;
+        for (int key : keys) if (!OverlayKeys.modifier(key)) ordered[index++] = key;
+        return ordered;
+    }
+
     public void releaseKeys() {
-        for (int key : new HashSet<>(pressedButtons.values())) keyInput.send(key, false);
+        Set<Integer> held = heldKeys();
+        int[] codes = new int[held.size()]; int index = 0;
+        for (int key : held) codes[index++] = key;
+        codes = orderedKeys(codes);
+        for (int i = codes.length - 1; i >= 0; i--) keyInput.send(codes[i], false);
         pressedButtons.clear();
     }
 
