@@ -65,6 +65,12 @@ public class OverlayEditorActivity extends Activity {
         LinearLayout fields = new LinearLayout(this);
         name = field("Layout name", fields); game = field("Game name (optional)", fields); root.addView(fields);
         FrameLayout previewArea = new FrameLayout(this) {
+            @Override protected void onMeasure(int widthSpec, int heightSpec) {
+                super.onMeasure(widthSpec, heightSpec);
+                int w = Math.min(getMeasuredWidth(), getMeasuredHeight()*16/9), h = w*9/16;
+                getChildAt(0).measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
+            }
             @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
                 int w = Math.min(r-l, (b-t)*16/9), h = w*9/16;
                 getChildAt(0).layout((r-l-w)/2, (b-t-h)/2, (r-l+w)/2, (b-t+h)/2);

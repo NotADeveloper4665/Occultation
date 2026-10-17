@@ -39,7 +39,7 @@ bash ./gradlew :app:testNonRoot_gameDebugUnitTest :app:lintNonRoot_gameDebug :ap
 ```
 
 Physical-device checks still needed: Pixel landscape safe areas, keyboard show/hide,
-left-drag release during app backgrounding, two-finger scrolling, changing modes
+held mouse-button release during app backgrounding, two-finger scrolling, changing modes
 from the stream menu, and mouse/stylus input with the overlay enabled.
 
 ## Layout editor and game layouts
