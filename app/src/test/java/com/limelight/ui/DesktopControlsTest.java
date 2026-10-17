@@ -25,6 +25,7 @@ public class DesktopControlsTest {
         view.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, 1000, 600);
+        shadowOf(Looper.getMainLooper()).idle();
         return view;
     }
 
@@ -47,14 +48,15 @@ public class DesktopControlsTest {
     @Test public void confinesMouseAndFullScreenToggleExpandsArea() {
         AtomicInteger events = new AtomicInteger();
         DesktopControlsView view = overlay(events);
-        tap(view, 450, 300);
+        tap(view, view.getWidth() * .45f, view.getHeight() * .3f);
         assertEquals(0, events.get());
-        tap(view, 800, 450);
+        View pad = view.getChildAt(0);
+        tap(view, pad.getLeft() + pad.getWidth()/2f, pad.getTop() + pad.getHeight()/2f);
         assertEquals(2, events.get());
         View mouse = view.getChildAt(4);
         tap(view, mouse.getLeft() + mouse.getWidth()/2f, mouse.getTop() + mouse.getHeight()/2f);
         assertEquals(2, events.get()); // Button touches never reach the remote input route.
-        tap(view, 450, 300);
+        tap(view, view.getWidth() * .45f, view.getHeight() * .3f);
         assertEquals(4, events.get());
     }
 
