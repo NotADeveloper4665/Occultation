@@ -62,24 +62,27 @@ The selected control has a brighter outline. Built-in buttons remain round.
   case. Saving the same game assignment reassigns it to the newly saved layout.
   Other games use the selected general layout. The Remote desktop mouse mode
   must be selected to display these controls.
-- **Add key** creates a circular button labelled from its assigned keyboard key.
+- **Add button** creates a circular button with a keyboard key, shortcut, or built-in action.
   For example, Shift creates a **Shift** button. It stays pressed while touched,
   then releases on lift, cancellation, hiding controls, backgrounding or mode exit.
-  **Change key** updates its binding and label; **Remove key** deletes it.
+  **Assign action** updates any cluster or added button; **Delete button** removes the selected button after confirmation. The eye and trackpad remain dedicated controls.
 - **Import** opens Android's document picker and previews a validated JSON layout.
   Press Save to keep it. Imports get a new identity and do not overwrite a saved file.
 - **Export** saves the current configuration with Android's document picker. A
   layout can be shared and reimported on another device. No storage permission is needed.
 - **Reset positions** resets the built-in controls while retaining custom keys.
 
-Files use version 1 of the JSON schema. Positions are normalized centers (`x`, `y`)
+New files use version 2 of the JSON schema; version 1 layouts are upgraded on load. Positions are normalized centers (`x`, `y`)
 from 0 to 1. Circular button `size` is a fraction of the preview's shorter side.
-Trackpad `width` and `height` are fractions of the full preview. Key buttons contain
-an allowlisted Windows virtual-key code (`key`); labels are derived by the app.
+Trackpad `width` and `height` are fractions of the full preview. Buttons use `action` for a keyboard key (`key`) or a built-in function (`keyboard`, `home`, `mouse`, `eye`). Keyboard shortcuts use `keys`, an array of up to eight distinct virtual-key codes; legacy `key` remains supported. Labels are derived by the app.
 Import rejects unsupported versions, invalid types/positions, duplicate IDs,
-missing built-in controls, unsupported key codes, more than 64 custom buttons,
+missing eye/trackpad controls, unsupported key codes, more than 67 buttons,
 and files larger than 256 KB. At most 50 layouts can be saved.
 
-This is the first game-overlay system: game-name matching and single-key hold
-bindings are supported. Macros, scripts, button chords and automatic app detection
-outside the streamed launch name are not part of this format.
+Keyboard shortcuts hold their modifiers before their main keys and release in reverse order. F1–F24, numpad, media/browser and navigation keys are listed; other virtual-key codes from 08 to FE can be entered with host-dependent support. Built-in actions can be assigned to any cluster/added button. Macros, scripts and automatic game detection outside the streamed launch name are outside this format.
+
+Development builds now use an explicit retained signing-keystore path. A public
+certificate fingerprint is verified across architecture APKs before publication.
+Once that fingerprint is published, a missing keystore or a changed signer blocks
+publication instead of creating an incompatible update silently. A missing cache
+requires restoring the original keystore; the pipeline does not bypass the check.

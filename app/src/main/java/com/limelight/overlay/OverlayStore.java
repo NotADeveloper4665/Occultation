@@ -15,7 +15,7 @@ public final class OverlayStore {
         try {
             List<OverlayLayout> list = new Gson().fromJson(prefs.getString("layouts", "[]"), new TypeToken<List<OverlayLayout>>(){}.getType());
             if (list != null && !list.isEmpty()) {
-                for (OverlayLayout layout : list) layout.validate();
+                for (OverlayLayout layout : list) { layout.upgrade(); layout.validate(); }
                 return list;
             }
         } catch (RuntimeException ignored) { /* Retain corrupt storage for recovery, use a safe default. */ }

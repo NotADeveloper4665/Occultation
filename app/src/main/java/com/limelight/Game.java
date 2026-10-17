@@ -4165,10 +4165,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (down) overlayKeys.add(key); else overlayKeys.remove(key);
         overlayModifiers = 0;
         for (int held : overlayKeys) {
-            if (held == 0xA0 || held == 0xA1) overlayModifiers |= KeyboardPacket.MODIFIER_SHIFT;
-            if (held == 0xA2 || held == 0xA3) overlayModifiers |= KeyboardPacket.MODIFIER_CTRL;
-            if (held == 0xA4 || held == 0xA5) overlayModifiers |= KeyboardPacket.MODIFIER_ALT;
-            if (held == 0x5B) overlayModifiers |= KeyboardPacket.MODIFIER_META;
+            if (held == 0x10 || held == 0xA0 || held == 0xA1) overlayModifiers |= KeyboardPacket.MODIFIER_SHIFT;
+            if (held == 0x11 || held == 0xA2 || held == 0xA3) overlayModifiers |= KeyboardPacket.MODIFIER_CTRL;
+            if (held == 0x12 || held == 0xA4 || held == 0xA5) overlayModifiers |= KeyboardPacket.MODIFIER_ALT;
+            if (held == 0x5B || held == 0x5C) overlayModifiers |= KeyboardPacket.MODIFIER_META;
         }
         conn.sendKeyboardInput((short) (0x8000 | key), down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP,
                 getModifierState(), (byte) 0);

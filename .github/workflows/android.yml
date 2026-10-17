@@ -31,17 +31,51 @@ jobs:
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.0.12077973'
       - uses: gradle/actions/setup-gradle@v4
       - name: Restore development signing key
+        id: development-key
         if: github.event_name != 'pull_request'
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: occultation-development-signing-v1
+          path: ~/.android/occultation-development.keystore
+          key: occultation-development-signing-v2
+      - name: Prepare retained development signing key
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          retained_key="$HOME/.android/occultation-development.keystore"
+          mkdir -p "$RUNNER_TEMP/occultation-signer"
+          gh release view dev --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/occultation-signer/assets.txt"
+          if grep -qx 'development-signer.sha256' "$RUNNER_TEMP/occultation-signer/assets.txt"; then
+            gh release download dev --repo "$GITHUB_REPOSITORY" --pattern development-signer.sha256 --dir "$RUNNER_TEMP/occultation-signer"
+            if [ ! -s "$retained_key" ]; then
+              echo '::error::Retained signing key is missing. Restore it before publishing; refusing automatic key rotation.'
+              exit 1
+            fi
+          fi
+          if [ ! -s "$retained_key" ]; then
+            umask 077
+            mkdir -p "$(dirname "$retained_key")"
+            keytool -genkeypair -keystore "$retained_key" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Occultation Development,O=Occultation,C=US'
+          fi
+          echo "OCCULTATION_DEV_KEYSTORE=$retained_key" >> "$GITHUB_ENV"
+      - name: Test signing verification
+        run: python3 -m unittest discover -s scripts -p 'test_development_signing.py' -v
       - name: Test, lint and build development APKs
         run: bash ./gradlew :app:testNonRoot_gameDebugUnitTest :app:lintNonRoot_gameDebug :app:assembleNonRoot_gameDebug --stacktrace
+      - name: Verify development APK signing continuity
+        if: github.event_name != 'pull_request'
+        run: python3 scripts/check-development-signing.py --apks app/build/outputs/apk/nonRoot_game/debug --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner" --expected "$RUNNER_TEMP/occultation-signer/development-signer.sha256"
+      - name: Retain signing key before publishing
+        if: github.event_name != 'pull_request' && steps.development-key.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.android/occultation-development.keystore
+          key: occultation-development-signing-v2
       - name: Upload development APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Occultation-0.1.5-dev-APKs
+          name: Occultation-0.1.6-dev-APKs
           path: app/build/outputs/apk/nonRoot_game/debug/*.apk
           if-no-files-found: error
       - name: Publish downloadable development APKs
@@ -63,16 +97,22 @@ jobs:
               if abi not in ('universal', 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'):
                   raise SystemExit('Unexpected APK architecture')
               shutil.copy2(root / element['outputFile'], Path('release-apks') / f'Occultation-{abi}.apk')
+          shutil.copy2(root / 'development-signer.sha256', Path('release-apks/development-signer.sha256'))
           Path('release-apks/dev-build.json').write_text(json.dumps({
-              'version': '0.1.5-dev', 'commit': os.environ['GITHUB_SHA'],
-              'run': os.environ['GITHUB_RUN_ID']}, indent=2) + '\n')
+              'version': '0.1.6-dev', 'commit': os.environ['GITHUB_SHA'],
+              'run': os.environ['GITHUB_RUN_ID'],
+              'certificate_sha256': (root / 'development-signer.sha256').read_text().strip()}, indent=2) + '\n')
           if not Path('release-apks/Occultation-universal.apk').is_file():
               raise SystemExit('Universal APK was not built')
           PY
-          (cd release-apks && sha256sum *.apk dev-build.json > SHA256SUMS)
+          (cd release-apks && sha256sum *.apk dev-build.json development-signer.sha256 > SHA256SUMS)
           cat > release-notes.md <<EOF
-          Occultation 0.1.5 development build
+          Occultation 0.1.6 development build
 
+          - Assign keyboard keys, keyboard shortcuts, or built-in actions to cluster and custom buttons; delete buttons with confirmation.
+          - Searchable key picker with F1–F24, numpad/media/browser keys and an advanced host-dependent key-code option.
+          - Layout format v2 imports older layouts automatically. Modifier keys press first and release last.
+          - Retained development signing path with a published certificate pin; future builds reject unexpected signing-key changes. Earlier development APKs may require reinstalling.
           - Searchable Settings with Common settings and a section picker; existing preferences are preserved.
           - Remote desktop mode with round purple controls, a tighter button cluster, a trackpad and full-screen pointer toggle.
           - Corrected gestures: tap left-clicks; hold or two-finger tap right-clicks.
@@ -92,9 +132,9 @@ jobs:
           Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           EOF
           if gh release view dev --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.5 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.6 Development' --notes-file release-notes.md --prerelease --latest=false
           else
-            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.5 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.6 Development' --notes-file release-notes.md --prerelease --latest=false
           fi
           gh release upload dev release-apks/* --repo "$GITHUB_REPOSITORY" --clobber
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/dev" -f sha="$GITHUB_SHA" -F force=true

@@ -39,4 +39,12 @@ public class OverlayStoreTest {
         OverlayLayout safe = store.active(); safe.validate();
         store.delete(safe.id); assertEquals(1, store.layouts().size());
     }
+    @Test public void oldSavedLayoutsMigrateAndDeletionPersists() {
+        OverlayLayout old = OverlayLayout.defaults(); old.version = 1;
+        context.getSharedPreferences("desktop_overlay_layouts", 0).edit().putString("layouts", "[" + old.toJson() + "]").commit();
+        OverlayLayout loaded = store.active(); assertEquals(2, loaded.version);
+        loaded.deleteButton("keyboard"); store.save(loaded);
+        assertEquals(4, store.active().items.size());
+    }
+
 }
