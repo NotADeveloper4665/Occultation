@@ -33,6 +33,7 @@ public class SpinnerDialogTest {
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
         SpinnerDialog.displayDialog(activity, "Connecting", "Starting", true);
         ShadowDialog.getLatestDialog().cancel();
+        shadowOf(Looper.getMainLooper()).idle();
         assertTrue(activity.isFinishing());
     }
     @Test public void closeOnlyDismissesDialogsOwnedByActivity() {
