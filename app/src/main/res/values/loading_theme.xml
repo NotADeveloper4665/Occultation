@@ -1,0 +1,7 @@
+<resources>
+    <color name="umbral_surface">#F2171320</color>
+    <color name="umbral_text">#F4EAFF</color>
+    <color name="umbral_secondary">#CEC2DD</color>
+    <color name="umbral_accent">#C8A6F5</color>
+    <color name="umbral_border">#A5C8A6F5</color>
+</resources>
