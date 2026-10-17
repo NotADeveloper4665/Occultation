@@ -1,5 +1,7 @@
 package com.limelight.ui;
 
+import android.os.Looper;
+import static org.robolectric.Shadows.shadowOf;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
@@ -36,6 +38,7 @@ public class DesktopControlsTest {
             view.dispatchTouchEvent(e);
             e.recycle();
         }
+        shadowOf(Looper.getMainLooper()).idle();
     }
 
     @Test public void confinesMouseAndFullScreenToggleExpandsArea() {

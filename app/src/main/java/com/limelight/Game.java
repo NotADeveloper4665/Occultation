@@ -1710,7 +1710,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     protected void onPause() {
-        cancelDesktopTouches();
+        if (desktopControls != null) cancelDesktopTouches();
         if (isFinishing()) {
             // Stop any further input device notifications before we lose focus (and pointer capture)
             if (controllerHandler != null) {
