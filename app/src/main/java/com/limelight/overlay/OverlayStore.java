@@ -30,8 +30,13 @@ public final class OverlayStore {
     public OverlayLayout forGame(String game) {
         OverlayLayout selected = active();
         if (matches(selected.game, game)) return selected;
-        for (OverlayLayout layout : layouts()) if (matches(layout.game, game)) return layout;
-        return selected;
+        List<OverlayLayout> list = layouts();
+        for (OverlayLayout layout : list) if (matches(layout.game, game)) return layout;
+        if (selected.game.trim().isEmpty()) return selected;
+        String general = prefs.getString("general", "builtin-desktop");
+        for (OverlayLayout layout : list) if (layout.id.equals(general) && layout.game.trim().isEmpty()) return layout;
+        for (OverlayLayout layout : list) if (layout.game.trim().isEmpty()) return layout;
+        return OverlayLayout.defaults();
     }
     private static boolean matches(String assigned, String game) {
         return !assigned.trim().isEmpty() && game != null && assigned.trim().equalsIgnoreCase(game.trim());
@@ -44,7 +49,9 @@ public final class OverlayStore {
         // One automatic assignment per exact game name; saving is explicit reassignment.
         for (OverlayLayout old : list) if (matches(old.game, layout.game)) old.game = "";
         list.add(layout.copy());
-        prefs.edit().putString("layouts", new Gson().toJson(list)).putString("active", layout.id).apply();
+        SharedPreferences.Editor edit = prefs.edit().putString("layouts", new Gson().toJson(list)).putString("active", layout.id);
+        if (layout.game.trim().isEmpty()) edit.putString("general", layout.id);
+        edit.apply();
     }
     public OverlayLayout importLayout(String json) {
         OverlayLayout layout = OverlayLayout.fromJson(json);

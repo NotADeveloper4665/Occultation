@@ -21,6 +21,7 @@ public class OverlayStoreTest {
         OverlayLayout desktop = store.active(); store.save(desktop);
         OverlayLayout game = desktop.copy(); game.id = "game1"; game.name = "Game layout"; game.game = "Example Game";
         store.save(game);
+        assertEquals(desktop.id, store.forGame("Another game").id);
         store.save(desktop);
         assertEquals(desktop.id, store.forGame("Desktop").id);
         assertEquals(game.id, store.forGame("example game").id);
