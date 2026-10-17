@@ -319,6 +319,7 @@ public class StreamSettings extends AppCompatActivity {
         @Override
         public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View view = super.onCreateView(inflater, container, savedInstanceState);
+            view = new SettingsNavigation(getPreferenceScreen()).wrap(requireContext(), view);
             UiHelper.applyStatusBarPadding(view);
             return view;
         }
@@ -335,6 +336,11 @@ public class StreamSettings extends AppCompatActivity {
         public void initializePreferences() {
             addPreferencesFromResource(R.xml.preferences);
             PreferenceScreen screen = getPreferenceScreen();
+            Preference overlayEditor = findPreference("overlay_configuration");
+            if (overlayEditor != null) overlayEditor.setOnPreferenceClickListener(preference -> {
+                startActivity(new Intent(requireContext(), com.limelight.overlay.OverlayEditorActivity.class));
+                return true;
+            });
 
             AppCompatActivity activity = (AppCompatActivity) requireActivity();
             PackageManager pm = activity.getPackageManager();

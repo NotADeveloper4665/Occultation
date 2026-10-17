@@ -1710,6 +1710,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     protected void onPause() {
+        if (desktopControls != null) cancelDesktopTouches();
         if (isFinishing()) {
             // Stop any further input device notifications before we lose focus (and pointer capture)
             if (controllerHandler != null) {
@@ -1984,7 +1985,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private byte getModifierState() {
-        return (byte) modifierFlags;
+        return (byte) (modifierFlags | overlayModifiers);
     }
 
     @Override
@@ -4066,6 +4067,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             if (savedMouseModeString != null &&
                     (savedMouseModeString.equals(natural) ||
                             savedMouseModeString.equals(gaming) ||
+                            savedMouseModeIndex == 6 ||
                             savedMouseModeString.equals(disabled))) {
                 applyMouseMode(savedMouseModeIndex);
             } else {
@@ -4097,7 +4099,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         Set<String> allowedLabels = new HashSet<>(Arrays.asList(
                 getString(R.string.mouse_mode_track_pad_natural),
                 getString(R.string.mouse_mode_track_pad_gaming),
-                getString(R.string.mouse_mode_disabled)
+                getString(R.string.mouse_mode_disabled),
+                getString(R.string.mouse_mode_remote_desktop)
         ));
 
         List<MouseModeOption> options = new ArrayList<>();
@@ -4153,7 +4156,36 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
     }
 
+    private com.limelight.ui.DesktopControlsView desktopControls;
+
+    private byte overlayModifiers;
+    private final java.util.Set<Integer> overlayKeys = new java.util.HashSet<>();
+
+    private void sendOverlayKey(int key, boolean down) {
+        if (down) overlayKeys.add(key); else overlayKeys.remove(key);
+        overlayModifiers = 0;
+        for (int held : overlayKeys) {
+            if (held == 0xA0 || held == 0xA1) overlayModifiers |= KeyboardPacket.MODIFIER_SHIFT;
+            if (held == 0xA2 || held == 0xA3) overlayModifiers |= KeyboardPacket.MODIFIER_CTRL;
+            if (held == 0xA4 || held == 0xA5) overlayModifiers |= KeyboardPacket.MODIFIER_ALT;
+            if (held == 0x5B) overlayModifiers |= KeyboardPacket.MODIFIER_META;
+        }
+        conn.sendKeyboardInput((short) (0x8000 | key), down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP,
+                getModifierState(), (byte) 0);
+    }
+
+    private void cancelDesktopTouches() {
+        if (desktopControls != null) desktopControls.releaseKeys();
+        for (TouchContext context : touchContextMap) {
+            if (context != null) context.cancelTouch();
+        }
+    }
+
     private void applyMouseMode(int mode) {
+        if (desktopControls != null) {
+            ((android.view.ViewGroup) desktopControls.getParent()).removeView(desktopControls);
+            desktopControls = null;
+        }
         switch (mode) {
             case 0: // Multi-touch
                 prefConfig.enableMultiTouchScreen = true;
@@ -4166,6 +4198,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 break;
             case 2: // Trackpad (natural)
             case 3: // Trackpad (gaming)
+            case 6: // Remote desktop
                 prefConfig.enableMultiTouchScreen = false;
                 prefConfig.touchscreenTrackpad = true;
                 break;
@@ -4183,11 +4216,32 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 touchContextMap[i] = null;
             } else if (!prefConfig.touchscreenTrackpad) {
                 touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, mode == 5);
-            } else if (mode == 3) {
-                touchContextMap[i] = new RelativeTouchContext(conn, i, REFERENCE_HORIZ_RES, REFERENCE_VERT_RES, streamView, prefConfig);
+            } else if (mode == 3 || mode == 6) {
+                touchContextMap[i] = new RelativeTouchContext(conn, i, REFERENCE_HORIZ_RES, REFERENCE_VERT_RES, streamView, prefConfig, mode == 6);
             } else {
                 touchContextMap[i] = new TrackpadContext(conn, i);
             }
+        }
+
+        if (mode == 6) {
+            desktopControls = new com.limelight.ui.DesktopControlsView(this,
+                    this::toggleKeyboard,
+                    () -> sendKeys(new short[]{(short) 0x805B}),
+                    this::cancelDesktopTouches,
+                    event -> {
+                        MotionEvent mapped = MotionEvent.obtain(event);
+                        int[] overlayLocation = new int[2];
+                        int[] streamLocation = new int[2];
+                        desktopControls.getLocationOnScreen(overlayLocation);
+                        streamView.getLocationOnScreen(streamLocation);
+                        mapped.offsetLocation(overlayLocation[0] - streamLocation[0],
+                                overlayLocation[1] - streamLocation[1]);
+                        onTouch(streamView, mapped);
+                        mapped.recycle();
+                    });
+            desktopControls.setConfiguration(new com.limelight.overlay.OverlayStore(this).forGame(appName), this::sendOverlayKey);
+            ((android.view.ViewGroup) streamView.getParent()).addView(desktopControls,
+                    new android.widget.FrameLayout.LayoutParams(-1, -1));
         }
 
         // Always exit zoom mode if mouse mode has changed

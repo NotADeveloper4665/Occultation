@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "id": "example-game-layout",
+  "name": "Example game with Shift",
+  "game": "Example Game",
+  "items": [
+    {
+      "id": "trackpad",
+      "type": "trackpad",
+      "x": 0.77,
+      "y": 0.68,
+      "size": 0.12,
+      "width": 0.4,
+      "height": 0.55,
+      "key": 0
+    },
+    {
+      "id": "eye",
+      "type": "eye",
+      "x": 0.11,
+      "y": 0.1,
+      "size": 0.12,
+      "width": 0.4,
+      "height": 0.55,
+      "key": 0
+    },
+    {
+      "id": "keyboard",
+      "type": "keyboard",
+      "x": 0.14,
+      "y": 0.89,
+      "size": 0.17,
+      "width": 0.4,
+      "height": 0.55,
+      "key": 0
+    },
+    {
+      "id": "home",
+      "type": "home",
+      "x": 0.085,
+      "y": 0.77,
+      "size": 0.12,
+      "width": 0.4,
+      "height": 0.55,
+      "key": 0
+    },
+    {
+      "id": "mouse",
+      "type": "mouse",
+      "x": 0.22,
+      "y": 0.81,
+      "size": 0.12,
+      "width": 0.4,
+      "height": 0.55,
+      "key": 0
+    },
+    {
+      "id": "shift",
+      "type": "key",
+      "x": 0.5,
+      "y": 0.5,
+      "size": 0.12,
+      "width": 0.4,
+      "height": 0.55,
+      "key": 160
+    }
+  ]
+}

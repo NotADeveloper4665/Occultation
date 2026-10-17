@@ -914,6 +914,7 @@ private static int getFramePacingValue(Context context) {
                 break;
             case 2: // Trackpad (natural)
             case 3: // Trackpad (gaming)
+            case 6: // Remote desktop
                 config.enableMultiTouchScreen = false;
                 config.touchscreenTrackpad = true;
                 break;
