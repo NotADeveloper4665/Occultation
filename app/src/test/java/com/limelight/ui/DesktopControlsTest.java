@@ -71,4 +71,30 @@ public class DesktopControlsTest {
             assertEquals(view.getChildAt(i).getWidth(), view.getChildAt(i).getHeight());
         }
     }
+    @Test public void customShiftButtonLabelsItselfAndReleasesWhenHidden() {
+        DesktopControlsView view = overlay(new AtomicInteger());
+        com.limelight.overlay.OverlayLayout layout = com.limelight.overlay.OverlayLayout.defaults();
+        com.limelight.overlay.OverlayLayout.Item shift = new com.limelight.overlay.OverlayLayout.Item("shift", "key", .5f, .5f, .12f);
+        shift.key = 0xA0; layout.items.add(shift);
+        java.util.List<String> events = new java.util.ArrayList<>();
+        view.setConfiguration(layout, (key, down) -> events.add(key + ":" + down));
+        android.widget.Button button = (android.widget.Button) view.getChildAt(5);
+        assertEquals("Shift", button.getText().toString());
+        MotionEvent down = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1, 1, 0);
+        button.dispatchTouchEvent(down); down.recycle();
+        assertEquals(java.util.Arrays.asList("160:true"), events);
+        view.getChildAt(1).performClick();
+        assertEquals(java.util.Arrays.asList("160:true", "160:false"), events);
+    }
+
+    @Test public void editingPreviewDoesNotSendMouseOrKeys() {
+        AtomicInteger mouse = new AtomicInteger(), keys = new AtomicInteger();
+        DesktopControlsView view = overlay(mouse);
+        com.limelight.overlay.OverlayLayout layout = com.limelight.overlay.OverlayLayout.defaults();
+        view.setConfiguration(layout, (key, down) -> keys.incrementAndGet());
+        view.setEditing(item -> {});
+        tap(view, view.getWidth() * .77f, view.getHeight() * .68f);
+        assertEquals(0, mouse.get()); assertEquals(0, keys.get());
+    }
+
 }

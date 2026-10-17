@@ -193,6 +193,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:key="category_audio_settings"
         android:title="@string/category_audio_settings"
         app:iconSpaceReserved="false">
         <ListPreference
@@ -464,6 +465,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:key="category_host_settings"
         android:title="@string/category_host_settings"
         app:iconSpaceReserved="false">
         <CheckBoxPreference
@@ -481,6 +483,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:key="category_general_settings"
         android:title="@string/category_general_settings"
         app:initialExpandedChildrenCount="1"
         app:iconSpaceReserved="false">
@@ -1014,5 +1017,10 @@
         <SwitchPreferenceCompat android:key="eclipse_allow_keyboard" android:dependency="eclipse_view_only" android:title="@string/eclipse_allow_keyboard_title" android:summary="@string/eclipse_input_summary" android:defaultValue="true" app:iconSpaceReserved="false" />
         <SwitchPreferenceCompat android:key="eclipse_allow_mouse" android:dependency="eclipse_view_only" android:title="@string/eclipse_allow_mouse_title" android:summary="@string/eclipse_input_summary" android:defaultValue="true" app:iconSpaceReserved="false" />
         <SwitchPreferenceCompat android:key="eclipse_allow_controller" android:dependency="eclipse_view_only" android:title="@string/eclipse_allow_controller_title" android:summary="@string/eclipse_input_summary" android:defaultValue="true" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+    <PreferenceCategory android:key="desktop_overlay_settings" android:title="Desktop &amp; game overlays" app:iconSpaceReserved="false">
+        <Preference android:key="overlay_configuration" android:title="Overlay configuration"
+            android:summary="Preview, move and resize controls; save layouts, add keyboard buttons, or import and export a layout."
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 </PreferenceScreen>

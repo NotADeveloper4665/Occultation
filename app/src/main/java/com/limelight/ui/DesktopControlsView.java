@@ -8,6 +8,13 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.Button;
+import android.view.Gravity;
+import com.limelight.overlay.OverlayLayout;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.limelight.R;
 
@@ -19,6 +26,16 @@ public final class DesktopControlsView extends FrameLayout {
     private final ImageButton eye, keyboard, home, mouse;
     private final Runnable cancelTouches;
     private final MouseInput mouseInput;
+    public interface KeyInput { void send(int key, boolean down); }
+    public interface Selection { void select(OverlayLayout.Item item); }
+    private OverlayLayout layout = OverlayLayout.defaults();
+    private final Map<String, View> controls = new LinkedHashMap<>();
+    private final Map<View, Integer> pressedButtons = new LinkedHashMap<>();
+    private KeyInput keyInput = (key, down) -> {};
+    private Selection selection;
+    private OverlayLayout.Item dragging;
+    private boolean editing;
+    private float dragX, dragY;
     private boolean controlsVisible = true;
     private boolean fullScreen;
     private boolean mouseGesture;
@@ -28,7 +45,7 @@ public final class DesktopControlsView extends FrameLayout {
         super(context);
         this.cancelTouches = cancelTouches;
         this.mouseInput = mouseInput;
-        setMotionEventSplittingEnabled(false);
+        setMotionEventSplittingEnabled(true);
         setFocusable(false);
         trackpad = new View(context);
         GradientDrawable pad = background(false);
@@ -40,13 +57,17 @@ public final class DesktopControlsView extends FrameLayout {
         keyboard = button(R.drawable.ic_desktop_keyboard, R.string.desktop_keyboard);
         home = button(R.drawable.ic_desktop_home, R.string.desktop_home);
         mouse = button(R.drawable.ic_desktop_mouse, R.string.desktop_mouse);
+        controls.put("trackpad", trackpad); controls.put("eye", eye);
+        controls.put("keyboard", keyboard); controls.put("home", home); controls.put("mouse", mouse);
         eye.setOnClickListener(v -> {
             cancelTouches.run();
             controlsVisible = !controlsVisible;
             eye.setAlpha(controlsVisible ? 1f : .2f);
-            keyboard.setVisibility(controlsVisible ? VISIBLE : INVISIBLE);
-            home.setVisibility(controlsVisible ? VISIBLE : INVISIBLE);
-            mouse.setVisibility(controlsVisible ? VISIBLE : INVISIBLE);
+            releaseKeys();
+            for (Map.Entry<String, View> control : controls.entrySet()) {
+                if (control.getValue() != eye && control.getValue() != trackpad)
+                    control.getValue().setVisibility(controlsVisible ? VISIBLE : INVISIBLE);
+            }
             updateTrackpad();
         });
         keyboard.setOnClickListener(v -> showKeyboard.run());
@@ -91,26 +112,85 @@ public final class DesktopControlsView extends FrameLayout {
         trackpad.setVisibility(controlsVisible && !fullScreen ? VISIBLE : INVISIBLE);
     }
 
+    public void setConfiguration(OverlayLayout value, KeyInput input) {
+        value.validate();
+        releaseKeys();
+        layout = value;
+        keyInput = input;
+        for (View view : new java.util.ArrayList<>(controls.values())) {
+            if (view instanceof Button) removeView(view);
+        }
+        controls.clear();
+        for (OverlayLayout.Item item : layout.items) {
+            View view;
+            switch (item.type) {
+                case "eye": view = eye; break;
+                case "keyboard": view = keyboard; break;
+                case "home": view = home; break;
+                case "mouse": view = mouse; break;
+                case "trackpad": view = trackpad; break;
+                default:
+                    Button key = new Button(getContext());
+                    key.setText(item.label()); key.setTextColor(0xFFF4EAFF);
+                    key.setTextSize(11); key.setAllCaps(false); key.setGravity(Gravity.CENTER);
+                    key.setPadding(dp(3), 0, dp(3), 0); key.setBackground(background(true));
+                    key.setContentDescription(item.label()); key.setFocusable(false);
+                    key.setOnTouchListener((v, event) -> {
+                        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                            boolean held = pressedButtons.containsValue(item.key);
+                            pressedButtons.put(v, item.key);
+                            if (!held) keyInput.send(item.key, true);
+                            v.setAlpha(1f);
+                        } else if (event.getActionMasked() == MotionEvent.ACTION_UP
+                                || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                            Integer released = pressedButtons.remove(v);
+                            if (released != null && !pressedButtons.containsValue(released)) keyInput.send(released, false);
+                            v.setAlpha(.8f);
+                        }
+                        return true;
+                    });
+                    key.setAlpha(.8f); addView(key); view = key;
+            }
+            controls.put(item.id, view);
+        }
+        requestLayout();
+    }
+
+    public void setEditing(Selection listener) {
+        editing = true; selection = listener;
+    }
+
+    public void releaseKeys() {
+        for (int key : new HashSet<>(pressedButtons.values())) keyInput.send(key, false);
+        pressedButtons.clear();
+    }
+
     @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         int width = right - left, height = bottom - top;
-        // Scale the cluster for small windows; every control remains a true circle.
-        int unit = Math.min(dp(56), Math.min(width / 7, height / 4));
-        int margin = Math.min(dp(24), unit / 2);
-        eye.layout(margin + unit, margin, margin + unit * 2, margin + unit);
-        int base = height - margin;
-        home.layout(margin, base - unit * 3, margin + unit, base - unit * 2);
-        int large = unit * 3 / 2;
-        keyboard.layout(margin + unit / 2, base - large, margin + unit / 2 + large, base);
-        mouse.layout(margin + unit * 2, base - unit * 2,
-                margin + unit * 3, base - unit);
-        trackpad.layout(width * 56 / 100, Math.max(margin + unit, height * 38 / 100),
-                width - margin, height - margin);
+        for (OverlayLayout.Item item : layout.items) {
+            View control = controls.get(item.id);
+            if (control == null) continue;
+            int w, h;
+            if ("trackpad".equals(item.type)) {
+                w = Math.round(width * item.width); h = Math.round(height * item.height);
+            } else {
+                w = h = Math.min(Math.min(width, height), Math.max(dp(32),
+                        Math.round(Math.min(width, height) * item.size)));
+            }
+            int x = Math.max(0, Math.min(width - w, Math.round(item.x * width - w / 2f)));
+            int y = Math.max(0, Math.min(height - h, Math.round(item.y * height - h / 2f)));
+            control.layout(x, y, x + w, y + h);
+        }
+    }
+
+    @Override public boolean onInterceptTouchEvent(MotionEvent event) {
+        return editing || super.onInterceptTouchEvent(event);
     }
 
     @Override public boolean dispatchTouchEvent(MotionEvent event) {
         // Leave physical mouse/stylus input on the established input route.
         if (event.getToolType(0) != MotionEvent.TOOL_TYPE_FINGER) return false;
-        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+        if (!editing && event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             // The original in-stream menu and zoom toggle remain reachable.
             for (int id : new int[]{R.id.floatingMenuButton, R.id.overlayToggleZoomButton}) {
                 View control = getRootView().findViewById(id);
@@ -125,6 +205,25 @@ public final class DesktopControlsView extends FrameLayout {
     }
 
     @Override public boolean onTouchEvent(MotionEvent event) {
+        if (editing) {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                dragging = null;
+                for (int i = layout.items.size() - 1; i >= 0; i--) {
+                    OverlayLayout.Item item = layout.items.get(i);
+                    View control = controls.get(item.id);
+                    if (event.getX() >= control.getLeft() && event.getX() <= control.getRight()
+                            && event.getY() >= control.getTop() && event.getY() <= control.getBottom()) {
+                        dragging = item; selection.select(item); break;
+                    }
+                }
+                dragX = event.getX(); dragY = event.getY();
+            } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE && dragging != null) {
+                dragging.x = Math.max(0, Math.min(1, dragging.x + (event.getX() - dragX) / Math.max(1, getWidth())));
+                dragging.y = Math.max(0, Math.min(1, dragging.y + (event.getY() - dragY) / Math.max(1, getHeight())));
+                dragX = event.getX(); dragY = event.getY(); requestLayout();
+            } else if (event.getActionMasked() == MotionEvent.ACTION_UP || event.getActionMasked() == MotionEvent.ACTION_CANCEL) dragging = null;
+            return true;
+        }
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             // Buttons are dispatched to their own views first. Keep this decision
             // for the complete gesture, including moves outside the pad bounds.
@@ -141,6 +240,7 @@ public final class DesktopControlsView extends FrameLayout {
     }
 
     @Override protected void onDetachedFromWindow() {
+        releaseKeys();
         cancelTouches.run();
         super.onDetachedFromWindow();
     }

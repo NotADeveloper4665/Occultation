@@ -161,6 +161,9 @@
             android:launchMode="singleInstance"
             android:taskAffinity=""
             android:theme="@style/ExternalDisplayControllerTheme"/>
+        <activity android:name=".overlay.OverlayEditorActivity" android:exported="false"
+            android:label="Overlay configuration" android:theme="@style/SettingsTheme"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".preferences.StreamSettings"
             android:resizeableActivity="true"

@@ -1985,7 +1985,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private byte getModifierState() {
-        return (byte) modifierFlags;
+        return (byte) (modifierFlags | overlayModifiers);
     }
 
     @Override
@@ -4158,7 +4158,24 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private com.limelight.ui.DesktopControlsView desktopControls;
 
+    private byte overlayModifiers;
+    private final java.util.Set<Integer> overlayKeys = new java.util.HashSet<>();
+
+    private void sendOverlayKey(int key, boolean down) {
+        if (down) overlayKeys.add(key); else overlayKeys.remove(key);
+        overlayModifiers = 0;
+        for (int held : overlayKeys) {
+            if (held == 0xA0 || held == 0xA1) overlayModifiers |= KeyboardPacket.MODIFIER_SHIFT;
+            if (held == 0xA2 || held == 0xA3) overlayModifiers |= KeyboardPacket.MODIFIER_CTRL;
+            if (held == 0xA4 || held == 0xA5) overlayModifiers |= KeyboardPacket.MODIFIER_ALT;
+            if (held == 0x5B) overlayModifiers |= KeyboardPacket.MODIFIER_META;
+        }
+        conn.sendKeyboardInput((short) (0x8000 | key), down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP,
+                getModifierState(), (byte) 0);
+    }
+
     private void cancelDesktopTouches() {
+        if (desktopControls != null) desktopControls.releaseKeys();
         for (TouchContext context : touchContextMap) {
             if (context != null) context.cancelTouch();
         }
@@ -4222,6 +4239,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         onTouch(streamView, mapped);
                         mapped.recycle();
                     });
+            desktopControls.setConfiguration(new com.limelight.overlay.OverlayStore(this).forGame(appName), this::sendOverlayKey);
             ((android.view.ViewGroup) streamView.getParent()).addView(desktopControls,
                     new android.widget.FrameLayout.LayoutParams(-1, -1));
         }
