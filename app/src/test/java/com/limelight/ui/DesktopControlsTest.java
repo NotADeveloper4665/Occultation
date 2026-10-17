@@ -1,11 +1,12 @@
 package com.limelight.ui;
 
+import android.app.Activity;
+import org.robolectric.Robolectric;
 import android.os.Looper;
 import static org.robolectric.Shadows.shadowOf;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
-import androidx.test.core.app.ApplicationProvider;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -17,8 +18,10 @@ import static org.junit.Assert.*;
 @Config(sdk = 33)
 public class DesktopControlsTest {
     private DesktopControlsView overlay(AtomicInteger events) {
-        DesktopControlsView view = new DesktopControlsView(ApplicationProvider.getApplicationContext(),
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        DesktopControlsView view = new DesktopControlsView(activity,
                 () -> {}, () -> {}, () -> {}, e -> events.incrementAndGet());
+        activity.setContentView(view);
         view.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, 1000, 600);
