@@ -30,6 +30,7 @@ public class RelativeTouchContext implements TouchContext {
     private final View targetView;
     private final PreferenceConfiguration prefConfig;
     private final Handler handler;
+    private final boolean desktopMode;
 
     private final Runnable dragTimerRunnable = new Runnable() {
         @Override
@@ -95,6 +96,13 @@ public class RelativeTouchContext implements TouchContext {
                                 int referenceWidth, int referenceHeight,
                                 View view, PreferenceConfiguration prefConfig)
     {
+        this(conn, actionIndex, referenceWidth, referenceHeight, view, prefConfig, false);
+    }
+
+    public RelativeTouchContext(NvConnection conn, int actionIndex,
+                                int referenceWidth, int referenceHeight,
+                                View view, PreferenceConfiguration prefConfig, boolean desktopMode) {
+        this.desktopMode = desktopMode;
         this.conn = conn;
         this.actionIndex = actionIndex;
         this.referenceWidth = referenceWidth;
@@ -137,7 +145,7 @@ public class RelativeTouchContext implements TouchContext {
 
     private byte getMouseButtonIndex()
     {
-        if (actionIndex == 1) {
+        if (!desktopMode && actionIndex == 1) {
             return MouseButtonPacket.BUTTON_RIGHT;
         }
         else {
@@ -180,7 +188,7 @@ public class RelativeTouchContext implements TouchContext {
         // Cancel the drag timer
         cancelDragTimer();
 
-        byte buttonIndex = getMouseButtonIndex();
+        byte buttonIndex = desktopMode && !confirmedDrag ? MouseButtonPacket.BUTTON_RIGHT : getMouseButtonIndex();
 
         if (confirmedDrag) {
             // Raise the button after a drag
