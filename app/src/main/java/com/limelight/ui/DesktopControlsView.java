@@ -114,7 +114,7 @@ public final class DesktopControlsView extends FrameLayout {
     }
 
     public void setConfiguration(OverlayLayout value, KeyInput input) {
-        value.validate();
+        // Persistence/import boundaries validate files. An editor draft may have an empty name.
         releaseKeys();
         layout = value;
         keyInput = input;

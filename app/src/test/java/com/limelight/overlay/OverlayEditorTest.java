@@ -18,6 +18,9 @@ public class OverlayEditorTest {
         com.limelight.ui.DesktopControlsView preview = findPreview(controller.get().findViewById(android.R.id.content));
         assertNotNull(preview); assertTrue(preview.getHeight() > 0);
         assertEquals(16f / 9f, preview.getWidth() / (float)preview.getHeight(), .03f);
+        android.view.ViewGroup root = (android.view.ViewGroup) ((android.view.ViewGroup) controller.get().findViewById(android.R.id.content)).getChildAt(0);
+        android.view.ViewGroup fields = (android.view.ViewGroup) root.getChildAt(1);
+        ((android.widget.EditText) fields.getChildAt(0)).setText(""); // Incomplete names must survive rotation.
         controller.recreate(); shadowOf(Looper.getMainLooper()).idle();
         assertNotNull(controller.get().findViewById(android.R.id.content));
         controller.pause().stop().destroy();
