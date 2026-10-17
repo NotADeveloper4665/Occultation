@@ -59,6 +59,7 @@ public final class DesktopControlsView extends FrameLayout {
         mouse = button(R.drawable.ic_desktop_mouse, R.string.desktop_mouse);
         controls.put("trackpad", trackpad); controls.put("eye", eye);
         controls.put("keyboard", keyboard); controls.put("home", home); controls.put("mouse", mouse);
+        eye.setElevation(dp(2));
         eye.setOnClickListener(v -> {
             cancelTouches.run();
             controlsVisible = !controlsVisible;
@@ -156,6 +157,14 @@ public final class DesktopControlsView extends FrameLayout {
         requestLayout();
     }
 
+    public void selectControl(String id) {
+        for (Map.Entry<String, View> control : controls.entrySet()) {
+            GradientDrawable background = (GradientDrawable) control.getValue().getBackground();
+            background.setStroke(dp(control.getKey().equals(id) ? 3 : 1),
+                    control.getKey().equals(id) ? 0xFFF4EAFF : 0xA5C8A6F5);
+        }
+    }
+
     public void setEditing(Selection listener) {
         editing = true; selection = listener;
     }
@@ -174,7 +183,7 @@ public final class DesktopControlsView extends FrameLayout {
             if ("trackpad".equals(item.type)) {
                 w = Math.round(width * item.width); h = Math.round(height * item.height);
             } else {
-                w = h = Math.min(Math.min(width, height), Math.max(dp(32),
+                w = h = Math.min(Math.min(width, height), Math.max(1,
                         Math.round(Math.min(width, height) * item.size)));
             }
             int x = Math.max(0, Math.min(width - w, Math.round(item.x * width - w / 2f)));

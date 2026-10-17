@@ -145,7 +145,7 @@ public class RelativeTouchContext implements TouchContext {
 
     private byte getMouseButtonIndex()
     {
-        if (!desktopMode && actionIndex == 1) {
+        if (actionIndex == 1 || (desktopMode && confirmedDrag)) {
             return MouseButtonPacket.BUTTON_RIGHT;
         }
         else {
@@ -188,7 +188,7 @@ public class RelativeTouchContext implements TouchContext {
         // Cancel the drag timer
         cancelDragTimer();
 
-        byte buttonIndex = desktopMode && !confirmedDrag ? MouseButtonPacket.BUTTON_RIGHT : getMouseButtonIndex();
+        byte buttonIndex = getMouseButtonIndex();
 
         if (confirmedDrag) {
             // Raise the button after a drag

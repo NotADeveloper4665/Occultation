@@ -41,7 +41,7 @@ jobs:
       - name: Upload development APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Occultation-0.1.4-dev-APKs
+          name: Occultation-0.1.5-dev-APKs
           path: app/build/outputs/apk/nonRoot_game/debug/*.apk
           if-no-files-found: error
       - name: Publish downloadable development APKs
@@ -55,6 +55,7 @@ jobs:
           import json
           from pathlib import Path
           import shutil
+          import os
           root = Path('app/build/outputs/apk/nonRoot_game/debug')
           metadata = json.loads((root / 'output-metadata.json').read_text())
           for element in metadata['elements']:
@@ -62,13 +63,21 @@ jobs:
               if abi not in ('universal', 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'):
                   raise SystemExit('Unexpected APK architecture')
               shutil.copy2(root / element['outputFile'], Path('release-apks') / f'Occultation-{abi}.apk')
+          Path('release-apks/dev-build.json').write_text(json.dumps({
+              'version': '0.1.5-dev', 'commit': os.environ['GITHUB_SHA'],
+              'run': os.environ['GITHUB_RUN_ID']}, indent=2) + '\n')
           if not Path('release-apks/Occultation-universal.apk').is_file():
               raise SystemExit('Universal APK was not built')
           PY
-          (cd release-apks && sha256sum *.apk > SHA256SUMS)
+          (cd release-apks && sha256sum *.apk dev-build.json > SHA256SUMS)
           cat > release-notes.md <<EOF
-          Occultation 0.1.4 development build
+          Occultation 0.1.5 development build
 
+          - Searchable Settings with Common settings and a section picker; existing preferences are preserved.
+          - Remote desktop mode with round purple controls, a tighter button cluster, a trackpad and full-screen pointer toggle.
+          - Corrected gestures: tap left-clicks; hold or two-finger tap right-clicks.
+          - Overlay configuration: desktop preview, move/scale controls, named layouts and optional game-name matching.
+          - Add keyboard buttons with automatic key labels, held-key input and reliable release; import/export versioned JSON layouts.
           - WAN / 5G Optimization: smaller packets, responsive presentation, compatible Syzygy feedback and bounded audio tempo adaptation.
           - Host/encoder/audio capabilities keep normal behavior when unsupported. This is a development preview; real cellular performance remains unverified.
           - Syzygy phrase pairing from Add Computer, the host pairing chooser, and the host long-press menu.
@@ -83,11 +92,12 @@ jobs:
           Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           EOF
           if gh release view dev --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.4 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.5 Development' --notes-file release-notes.md --prerelease --latest=false
           else
-            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.4 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.5 Development' --notes-file release-notes.md --prerelease --latest=false
           fi
           gh release upload dev release-apks/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/dev" -f sha="$GITHUB_SHA" -F force=true
       - name: Upload check reports
         if: always()
         uses: actions/upload-artifact@v4

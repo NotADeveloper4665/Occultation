@@ -119,7 +119,7 @@ public class OverlayEditorActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         };
         name.addTextChangedListener(watcher); game.addTextChangedListener(watcher);
-        setContentView(root); loadPreview();
+        setContentView(root); com.limelight.utils.UiHelper.applyStatusBarPadding(root); loadPreview();
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private LinearLayout row(LinearLayout root) {
@@ -150,7 +150,7 @@ public class OverlayEditorActivity extends Activity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); controls.setAdapter(adapter);
         select(layout.items.get(0));
     }
-    private void select(OverlayLayout.Item item) { selected = item; scale.setProgress(Math.round(item.size * 100) - 5); updateLabel(); }
+    private void select(OverlayLayout.Item item) { selected = item; preview.selectControl(item.id); scale.setProgress(Math.round(item.size * 100) - 5); updateLabel(); }
     private void updateLabel() { selectionLabel.setText(selected.label() + " · Size " + Math.round(selected.size * 100) + "%"); }
     private void chooseLayout() {
         List<OverlayLayout> list = store.layouts(); String[] names = new String[list.size()];

@@ -319,8 +319,9 @@ public class StreamSettings extends AppCompatActivity {
         @Override
         public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View view = super.onCreateView(inflater, container, savedInstanceState);
+            view = new SettingsNavigation(getPreferenceScreen()).wrap(requireContext(), view);
             UiHelper.applyStatusBarPadding(view);
-            return new SettingsNavigation(getPreferenceScreen()).wrap(requireContext(), view);
+            return view;
         }
 
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState, boolean unused) {

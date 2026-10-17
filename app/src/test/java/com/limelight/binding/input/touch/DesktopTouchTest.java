@@ -28,26 +28,26 @@ public class DesktopTouchTest {
         return touch;
     }
 
-    @Test public void desktopTapRightClicksAndReleases() {
+    @Test public void desktopTapLeftClicksAndReleases() {
         NvConnection conn = mock(NvConnection.class);
         RelativeTouchContext touch = context(conn, true);
         touch.touchUpEvent(100, 100, 100);
-        verify(conn).sendMouseButtonDown(MouseButtonPacket.BUTTON_RIGHT);
+        verify(conn).sendMouseButtonDown(MouseButtonPacket.BUTTON_LEFT);
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(110));
-        verify(conn).sendMouseButtonUp(MouseButtonPacket.BUTTON_RIGHT);
-        verify(conn, never()).sendMouseButtonDown(MouseButtonPacket.BUTTON_LEFT);
+        verify(conn).sendMouseButtonUp(MouseButtonPacket.BUTTON_LEFT);
+        verify(conn, never()).sendMouseButtonDown(MouseButtonPacket.BUTTON_RIGHT);
     }
 
-    @Test public void holdLeftDragsAndCancellationReleases() {
+    @Test public void holdRightDragsAndCancellationReleases() {
         NvConnection conn = mock(NvConnection.class);
         RelativeTouchContext touch = context(conn, true);
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(660));
-        verify(conn).sendMouseButtonDown(MouseButtonPacket.BUTTON_LEFT);
+        verify(conn).sendMouseButtonDown(MouseButtonPacket.BUTTON_RIGHT);
         touch.touchMoveEvent(130, 120, 700);
         verify(conn).sendMouseMove((short)30, (short)20);
         touch.cancelTouch();
-        verify(conn).sendMouseButtonUp(MouseButtonPacket.BUTTON_LEFT);
-        verify(conn, never()).sendMouseButtonDown(MouseButtonPacket.BUTTON_RIGHT);
+        verify(conn).sendMouseButtonUp(MouseButtonPacket.BUTTON_RIGHT);
+        verify(conn, never()).sendMouseButtonDown(MouseButtonPacket.BUTTON_LEFT);
     }
 
     @Test public void movingDoesNotClickOrStartDelayedDrag() {
@@ -67,4 +67,19 @@ public class DesktopTouchTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(110));
         verify(conn).sendMouseButtonUp(MouseButtonPacket.BUTTON_LEFT);
     }
+    @Test public void twoFingerTapRightClicksWithoutAnExtraLeftClick() {
+        NvConnection conn = mock(NvConnection.class);
+        RelativeTouchContext primary = context(conn, true);
+        View view = new View(ApplicationProvider.getApplicationContext()); view.layout(0, 0, 1280, 720);
+        RelativeTouchContext second = new RelativeTouchContext(conn, 1, 1280, 720, view, new PreferenceConfiguration(), true);
+        primary.setPointerCount(2); second.setPointerCount(2);
+        second.touchDownEvent(200, 100, 10, true);
+        second.touchUpEvent(200, 100, 100);
+        primary.touchUpEvent(100, 100, 120);
+        verify(conn).sendMouseButtonDown(MouseButtonPacket.BUTTON_RIGHT);
+        verify(conn, never()).sendMouseButtonDown(MouseButtonPacket.BUTTON_LEFT);
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(110));
+        verify(conn).sendMouseButtonUp(MouseButtonPacket.BUTTON_RIGHT);
+    }
+
 }
