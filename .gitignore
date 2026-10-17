@@ -47,3 +47,5 @@ app/.externalNativeBuild/
 
 # agent files
 AGENTS.md
+__pycache__/
+*.pyc

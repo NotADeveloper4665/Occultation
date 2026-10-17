@@ -25,7 +25,13 @@ public final class OverlayLayout {
         public int[] keys;
         public String function() { return action == null ? type : action; }
         public boolean editableButton() { return !"eye".equals(type) && !"trackpad".equals(type); }
-        public int[] keyboardKeys() { return keys == null ? new int[]{key} : keys.clone(); }
+        public int[] keyboardKeys() {
+            int[] source = keys == null ? new int[]{key} : keys;
+            int[] ordered = new int[source.length]; int index = 0;
+            for (int code : source) if (OverlayKeys.modifier(code)) ordered[index++] = code;
+            for (int code : source) if (!OverlayKeys.modifier(code)) ordered[index++] = code;
+            return ordered;
+        }
         public void assign(String function, int[] binding) {
             if (!editableButton()) throw new IllegalArgumentException("The visibility toggle and trackpad are dedicated controls");
             action = function;

@@ -104,7 +104,7 @@ public class DesktopControlsTest {
         java.util.List<String> events = new java.util.ArrayList<>();
         view.setConfiguration(layout, (key, down) -> events.add(key + ":" + down));
         android.widget.Button key = (android.widget.Button) view.getChildAt(2);
-        assertEquals("C + Ctrl", key.getText().toString());
+        assertEquals("Ctrl + C", key.getText().toString());
         MotionEvent down = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1, 1, 0);
         key.dispatchTouchEvent(down); down.recycle(); view.releaseKeys();
         assertEquals(java.util.Arrays.asList("162:true", "67:true", "67:false", "162:false"), events);

@@ -11,8 +11,8 @@ android {
         minSdk 21
         targetSdk 34
 
-        versionName "0.1.5-dev"
-        versionCode = 6
+        versionName "0.1.6-dev"
+        versionCode = 7
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes
         ndk.debugSymbolLevel = 'FULL'
@@ -90,6 +90,17 @@ android {
     packaging {
         resources {
             pickFirsts.add('META-INF/versions/9/OSGI-INF/MANIFEST.MF')
+        }
+    }
+
+    signingConfigs {
+        debug {
+            if (System.getenv('OCCULTATION_DEV_KEYSTORE')) {
+                storeFile file(System.getenv('OCCULTATION_DEV_KEYSTORE'))
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
         }
     }
 

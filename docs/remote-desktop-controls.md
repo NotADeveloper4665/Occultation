@@ -80,3 +80,9 @@ missing eye/trackpad controls, unsupported key codes, more than 67 buttons,
 and files larger than 256 KB. At most 50 layouts can be saved.
 
 Keyboard shortcuts hold their modifiers before their main keys and release in reverse order. F1–F24, numpad, media/browser and navigation keys are listed; other virtual-key codes from 08 to FE can be entered with host-dependent support. Built-in actions can be assigned to any cluster/added button. Macros, scripts and automatic game detection outside the streamed launch name are outside this format.
+
+Development builds now use an explicit retained signing-keystore path. A public
+certificate fingerprint is verified across architecture APKs before publication.
+Once that fingerprint is published, a missing keystore or a changed signer blocks
+publication instead of creating an incompatible update silently. A missing cache
+requires restoring the original keystore; the pipeline does not bypass the check.
