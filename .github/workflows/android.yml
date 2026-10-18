@@ -59,6 +59,11 @@ jobs:
             keytool -genkeypair -keystore "$retained_key" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Occultation Development,O=Occultation,C=US'
           fi
           echo "OCCULTATION_DEV_KEYSTORE=$retained_key" >> "$GITHUB_ENV"
+      - name: Test adaptive interpolation admission
+        run: |
+          mkdir -p build/neural-policy
+          javac -d build/neural-policy app/src/main/java/com/limelight/neural/AdaptiveInterpolationPolicy.java app/src/main/java/com/limelight/neural/InterpolationAdmission.java tests/neural/InterpolationScenarios.java
+          java -cp build/neural-policy InterpolationScenarios
       - name: Test signing verification
         run: python3 -m unittest discover -s scripts -p 'test_development_signing.py' -v
       - name: Test, lint and build development APKs
