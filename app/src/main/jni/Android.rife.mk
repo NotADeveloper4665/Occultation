@@ -45,7 +45,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := occultation-rife-vulkan
 LOCAL_SRC_FILES := rife_jni.cpp ../../../build/interpolation/rife/rife.cpp ../../../build/interpolation/rife/warp.cpp
 LOCAL_C_INCLUDES := $(RIFE_GENERATED)/rife $(RIFE_GENERATED)/ncnn/$(TARGET_ARCH_ABI)/include/ncnn
-LOCAL_CPPFLAGS := -std=c++17 -O2 -fexceptions -frtti
+LOCAL_CPPFLAGS := -std=c++17 -O2 -fno-exceptions -fno-rtti
 LOCAL_LDFLAGS := -fopenmp -static-openmp
 LOCAL_LDLIBS := -ldl -llog -landroid
 LOCAL_GROUP_STATIC_LIBRARIES := true
