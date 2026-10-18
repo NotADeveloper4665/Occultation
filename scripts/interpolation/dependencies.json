@@ -143,6 +143,16 @@
       "path": "licenses/ncnn-LICENSE.txt",
       "url": "https://raw.githubusercontent.com/Tencent/ncnn/20240410/LICENSE.txt",
       "sha256": "6495f972a09ad7f64ccd953e79adba91a93d862edc7135e6d95210bbf4002a01"
+    },
+    {
+      "path": "licenses/glslang-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/KhronosGroup/glslang/4420f9b33ba44928d5c82d9eae0c3bb4d5674c05/LICENSE.txt",
+      "sha256": "adb783e734e906d1f46db5df29991dbde84bdb0ceab502ac2febb44fe3c2b5f4"
+    },
+    {
+      "path": "licenses/ONNXRuntime-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/v1.22.0/LICENSE",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
     }
   ]
 }

@@ -46,8 +46,8 @@ LOCAL_MODULE := occultation-rife-vulkan
 LOCAL_SRC_FILES := rife_jni.cpp ../../../build/interpolation/rife/rife.cpp ../../../build/interpolation/rife/warp.cpp
 LOCAL_C_INCLUDES := $(RIFE_GENERATED)/rife $(RIFE_GENERATED)/ncnn/$(TARGET_ARCH_ABI)/include/ncnn
 LOCAL_CPPFLAGS := -std=c++17 -O2 -fno-exceptions -fno-rtti
-LOCAL_LDFLAGS := -fopenmp -static-openmp
-LOCAL_LDLIBS := -ldl -llog -landroid
+LOCAL_LDFLAGS := -fopenmp -static-openmp -Wl,-wrap,__kmp_affinity_determine_capable
+LOCAL_LDLIBS := -ldl -llog -landroid -ljnigraphics
 LOCAL_GROUP_STATIC_LIBRARIES := true
 LOCAL_STATIC_LIBRARIES := rife_ncnn rife_SPIRV rife_glslang rife_MachineIndependent rife_OSDependent rife_GenericCodeGen rife_OGLCompiler rife_glslang-default-resource-limits
 include $(BUILD_SHARED_LIBRARY)

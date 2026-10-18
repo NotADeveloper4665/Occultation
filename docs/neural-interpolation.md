@@ -2,7 +2,7 @@
 
 ## Status
 
-The adaptive policy and frame-admission controller are implemented and tested. They are deliberately not wired into the MediaCodec presentation path. A reusable native NNAPI compiler/executor and explicit ADD-graph execution test are now implemented (see below). No interpolation model, frame conversion, generated-frame renderer or live network feed is connected. There is no active frame-generation setting. Device enumeration from 0.1.8-dev is only diagnostics.
+The adaptive policy and frame-admission controller are implemented and tested. They are deliberately not wired into the MediaCodec presentation path. A reusable native NNAPI compiler/executor and explicit ADD-graph execution test are now implemented (see below). Pinned RIFE Lite ONNX and ncnn RIFE v4 models now have explicit frame-pair inference APIs and a settings test (see rife-android.md). No decoder frame consumer, generated-frame stream renderer or live network feed is connected. There is no active frame-generation setting. Device enumeration from 0.1.8-dev is only diagnostics.
 
 ## Established methods to evaluate
 
@@ -53,8 +53,8 @@ Invalidation does not release the active execution slot or in-use buffers. A bac
 
 ## Remaining renderer integration
 
-1. Acquire and pin a trained model and audit/export its graph. Test actual NNAPI support on the phone using the copyable hardware report as the first diagnostic.
-2. Implement explicit-device NNAPI compilation, model cache, timing and verified per-model delegation. Keep model initialization outside the stream hot path.
+1. Validate the bundled, pinned RIFE models on the phone. Resolve RIFE Lite GridSample/shape-operation compatibility before claiming NNAPI/Tensor support; use the real frame-pair test, not only enumeration.
+2. Establish verified per-model delegation and full-frame timing for each backend. The generic native compiler/executor and ONNX NNAPI workflow exist, but neither proves Tensor silicon identity or full RIFE Lite delegation. Keep initialization outside the stream hot path.
 3. Add a hardware-decoder texture/buffer consumer and a color-managed presentation stage. Current MediaCodec output goes directly to a Surface and does not expose model-ready image tensors.
 4. Feed **non-destructive** telemetry snapshots to the policy. Do not consume `takeWanLoss()` twice: it resets the counters used by WAN adaptation. Snapshot loss and RTT variance at the existing sampling point, record arrival variation separately, and do not relabel RTT variance as actual frame-arrival jitter. Reject stale samples.
 5. Evaluate before every admission, invalidate pending results on any bypass/scene cut/resolution change/reconnect, preserve real-frame priority, and use one monotonic clock domain for all deadlines and completion timestamps.
