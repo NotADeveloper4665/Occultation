@@ -25,6 +25,11 @@ def fetch(item):
     temporary.replace(target)
     return target
 
+def checked_shaders(source):
+    # Braces preserve any surrounding if/else with an unbraced single statement.
+    return re.sub(r'(?m)^(\s*)(compile_spirv_module\([^\n]+\)|\w+->create\([^\n]+\));',
+                  r'\1{ if (\2 != 0) return -1; }', source)
+
 def patch_rife(source):
     start = source.index('static void load_param_model(ncnn::Net& net, const std::string&')
     end = source.index('\n#endif', start)
@@ -41,6 +46,8 @@ def patch_rife(source):
     # Only the Android/non-Windows helper returns status; Windows is not built here.
     source = re.sub(r'    load_param_model\(([^;]*"[^;]*)\);', r'    if (load_param_model(\1) != 0) return -1;', source)
     # The selected v4 GPU path has no CPU fallback and checks every extractor call.
+    boundary = source.index('int RIFE::process(')
+    source = checked_shaders(source[:boundary]) + source[boundary:]
     start = source.index('int RIFE::process_v4(')
     end = source.index('int RIFE::process_v4_cpu(', start)
     part = source[start:end]
@@ -75,6 +82,7 @@ def main():
         else: target = ASSETS / pathlib.Path(relative).name
         target.parent.mkdir(parents=True, exist_ok=True)
         if relative == 'src/rife.cpp': target.write_text(patch_rife(cached.read_text()))
+        elif relative == 'src/warp.cpp': target.write_text(checked_shaders(cached.read_text()))
         else: shutil.copyfile(cached, target)
     # Keep Android and host C library include roots separate in other build steps.
     with zipfile.ZipFile(paths[-2]) as archive:
