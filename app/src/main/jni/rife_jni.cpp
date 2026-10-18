@@ -28,8 +28,17 @@ Java_com_limelight_interpolation_VulkanRife_nativeOpen(JNIEnv* env, jclass, jstr
     std::lock_guard<std::mutex> lock(mutex);
     std::call_once(instance, [] { ncnn::create_gpu_instance(); });
     if (ncnn::get_gpu_count() <= 0) { fail(env, "No compatible Vulkan GPU exposed; CPU fallback disabled"); return 0; }
-    const int gpu = ncnn::get_default_gpu_index();
-    if (gpu < 0 || gpu >= ncnn::get_gpu_count()) { fail(env, "Invalid Vulkan device selection"); return 0; }
+    int gpu = ncnn::get_default_gpu_index();
+    auto physical = [](int index) {
+        if (index < 0 || index >= ncnn::get_gpu_count()) return false;
+        int type = ncnn::get_gpu_info(index).type();
+        return type == 0 || type == 1; // discrete or integrated; exclude virtual/CPU renderers
+    };
+    if (!physical(gpu)) {
+        gpu = -1;
+        for (int i = 0; i < ncnn::get_gpu_count(); ++i) if (physical(i)) { gpu = i; break; }
+    }
+    if (gpu < 0) { fail(env, "No physical Vulkan GPU exposed; software/CPU renderers excluded"); return 0; }
     Session session;
     session.device = ncnn::get_gpu_info(gpu).device_name();
     session.model.reset(new RIFE(gpu, false, false, false, 1, false, true));

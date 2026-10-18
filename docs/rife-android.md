@@ -45,8 +45,8 @@ The upstream author lists the Practical-RIFE linked models under MIT; the ONNX
 conversion is from AmusementClub/vs-mlrt's external-models release.
 
 The existing NDK build compiles the upstream RIFE kernels into a JNI library and
-links the pinned ncnn static SDK. Android requires API 24+ to open the Vulkan path;
-other app features retain minSdk 21. The original RIFE shader generation is reproduced
+links the pinned ncnn static SDK. Vulkan CPU and virtual devices are excluded. Android requires API 24+ to open the Vulkan path;
+other app features retain minSdk 21. ONNX Runtime declares minSdk 24, so its manifest requirement is overridden only because both the UI and the adapter constructor prevent entry below API 29; no native ORT library is loaded on older devices. Compatibility tests exercise these guards before native initialization. The original RIFE shader generation is reproduced
 by the preparation script. Local changes to pinned upstream source add checked model
 loading, reject layers without Vulkan support (apart from structural Input/Split),
 remove the selected v4 GPU path's CPU retry, check extractor/submission results and

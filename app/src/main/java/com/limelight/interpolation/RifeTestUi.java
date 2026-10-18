@@ -17,6 +17,12 @@ public final class RifeTestUi {
                         (dialog, which) -> start(activity, which == 0)).setNegativeButton("Close", null).show();
     }
     private static void start(Activity activity, boolean vulkan) {
+        if ((!vulkan && android.os.Build.VERSION.SDK_INT < 29) ||
+                (vulkan && android.os.Build.VERSION.SDK_INT < 24)) {
+            new AlertDialog.Builder(activity).setMessage(vulkan ? "RIFE Vulkan requires Android 7 or newer." :
+                    "Strict RIFE NNAPI requires Android 10 or newer.").setPositiveButton("OK", null).show();
+            return;
+        }
         if (!RUNNING.compareAndSet(false, true)) {
             new AlertDialog.Builder(activity).setMessage("A RIFE test is already running.").setPositiveButton("OK", null).show(); return;
         }
@@ -37,13 +43,14 @@ public final class RifeTestUi {
                         model.interpolate(first, second, output, width, height, 0.5f); cold = System.nanoTime() - begin;
                         for (int i = 0; i < 3; i++) { begin = System.nanoTime(); model.interpolate(first, second, output, width, height, 0.5f); worst = Math.max(worst, System.nanoTime() - begin); }
                     }
-                } else {
+                } else if (android.os.Build.VERSION.SDK_INT >= 29) {
                     try (NnapiRifeLite model = new NnapiRifeLite(activity.getApplicationContext(), width, height)) {
                         device = "NNAPI non-CPU requested; GPU/NPU identity unverified"; long begin = System.nanoTime();
                         model.interpolate(first, second, output, 0.5f); cold = System.nanoTime() - begin;
                         for (int i = 0; i < 3; i++) { begin = System.nanoTime(); model.interpolate(first, second, output, 0.5f); worst = Math.max(worst, System.nanoTime() - begin); }
                     }
                 }
+                else { throw new IllegalStateException("RIFE NNAPI requires Android 10+"); }
                 preview = preview(first, output, second, width, height);
                 report = String.format(java.util.Locale.ROOT,
                         "%s\nDevice: %s\nGenerated middle frame: 64 × 64 RGB\nCold execution: %.2f ms\nWorst of 3 warm executions: %.2f ms\nIncludes execution setup, input conversion and GPU transfers where applicable; excludes model loading.\n\nThis is a tiny functional test, not a 720p/1080p performance result. Frame generation is not connected to stream rendering.",
@@ -51,7 +58,7 @@ public final class RifeTestUi {
             } catch (Exception | LinkageError error) {
                 report = (vulkan ? "Vulkan RIFE unavailable" : "RIFE Lite NNAPI unsupported or unavailable") +
                         "\n" + error.getClass().getSimpleName() + ": " + error.getMessage() +
-                        "\n\nNo CPU retry was attempted. RIFE Lite contains operations such as GridSample that this NNAPI provider may not support. Failure does not mean the phone has no AI accelerator.";
+                        "\n\nNo CPU retry was attempted. " + (vulkan ? "Check the exposed Vulkan GPU and its driver." : "RIFE Lite contains operations such as GridSample that this NNAPI provider may not support. Failure does not mean the phone has no AI accelerator.");
             } finally { RUNNING.set(false); }
             final String text = report; final Bitmap image = preview;
             activity.runOnUiThread(() -> {

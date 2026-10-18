@@ -11,6 +11,7 @@ import java.util.*;
 /** RIFE Lite ONNX NNAPI workflow. Strictly rejects ORT and NNAPI CPU fallback.
  * NNAPI may select GPU or NPU; success alone does not identify a Tensor TPU.
  */
+@androidx.annotation.RequiresApi(29)
 public final class NnapiRifeLite implements AutoCloseable {
     private final OrtEnvironment environment;
     private final OrtSession session;
