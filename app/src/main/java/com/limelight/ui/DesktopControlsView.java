@@ -112,7 +112,7 @@ public final class DesktopControlsView extends FrameLayout {
         button.setMinHeight(0); button.setMinimumHeight(0);
         button.setIncludeFontPadding(false);
         button.setMaxLines(5);
-        button.setAutoSizeTextTypeUniformWithConfiguration(6, 11, 1, TypedValue.COMPLEX_UNIT_SP);
+        androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(button, 6, 11, 1, TypedValue.COMPLEX_UNIT_SP);
         button.setBackground(background(true));
         button.setContentDescription(item.label());
         button.setFocusable(false);
