@@ -110,8 +110,11 @@ public class DesktopControlsTest {
         assertEquals(java.util.Arrays.asList("162:true", "67:true", "67:false", "162:false"), events);
         layout.items.get(2).assign("mouse", null);
         view.setConfiguration(layout, (code, pressed) -> {});
-        assertTrue(view.getChildAt(2) instanceof android.widget.ImageButton);
+        assertEquals("Full-screen mouse", ((android.widget.Button)view.getChildAt(2)).getText().toString());
         assertEquals("Full-screen mouse", view.getChildAt(2).getContentDescription().toString());
+        view.getChildAt(2).performClick();
+        assertTrue(view.getChildAt(2).isSelected());
+        assertEquals(View.INVISIBLE, view.getChildAt(0).getVisibility());
     }
     @Test public void deletedClusterButtonDisappearsFromRendering() {
         DesktopControlsView view = overlay(new AtomicInteger());
@@ -121,4 +124,25 @@ public class DesktopControlsTest {
         assertEquals(4, view.getChildCount());
     }
 
+    @Test public void configuredActionsHaveVisibleLabelsAndMeasureAtTheirCircleSize() {
+        DesktopControlsView view = overlay(new AtomicInteger());
+        com.limelight.overlay.OverlayLayout layout = com.limelight.overlay.OverlayLayout.defaults();
+        com.limelight.overlay.OverlayLayout.Item added = new com.limelight.overlay.OverlayLayout.Item("added", "key", .5f, .5f, .14f);
+        added.assign("home", null); layout.items.add(added);
+        view.setConfiguration(layout, (key, down) -> {});
+        view.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY));
+        view.layout(0, 0, 1000, 600);
+        for (int index = 2; index < view.getChildCount(); index++) {
+            android.widget.Button button = (android.widget.Button)view.getChildAt(index);
+            assertEquals(layout.items.get(index).label(), button.getText().toString());
+            assertEquals(button.getWidth(), button.getMeasuredWidth());
+            assertEquals(button.getHeight(), button.getMeasuredHeight());
+            assertEquals(button.getWidth(), button.getHeight());
+        }
+        assertEquals("Windows / Super", ((android.widget.Button)view.getChildAt(5)).getText().toString());
+        added.assign("key", new int[]{0xA0});
+        view.setConfiguration(layout.copy(), (key, down) -> {});
+        assertEquals("Shift", ((android.widget.Button)view.getChildAt(5)).getText().toString());
+    }
 }
