@@ -110,8 +110,11 @@ public class DesktopControlsTest {
         assertEquals(java.util.Arrays.asList("162:true", "67:true", "67:false", "162:false"), events);
         layout.items.get(2).assign("mouse", null);
         view.setConfiguration(layout, (code, pressed) -> {});
-        assertTrue(view.getChildAt(2) instanceof android.widget.ImageButton);
+        assertEquals("Full-screen mouse", ((android.widget.Button)view.getChildAt(2)).getText().toString());
         assertEquals("Full-screen mouse", view.getChildAt(2).getContentDescription().toString());
+        view.getChildAt(2).performClick();
+        assertTrue(view.getChildAt(2).isSelected());
+        assertEquals(View.INVISIBLE, view.getChildAt(0).getVisibility());
     }
     @Test public void deletedClusterButtonDisappearsFromRendering() {
         DesktopControlsView view = overlay(new AtomicInteger());
