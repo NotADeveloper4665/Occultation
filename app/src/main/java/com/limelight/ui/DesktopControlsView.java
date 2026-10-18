@@ -103,7 +103,7 @@ public final class DesktopControlsView extends FrameLayout {
 
     private Button actionButton(OverlayLayout.Item item, int icon) {
         AppCompatButton button = new AppCompatButton(getContext());
-        button.setSupportBackgroundTintList(null);
+        androidx.core.view.ViewCompat.setBackgroundTintList(button, null);
         button.setText(item.label());
         button.setTextColor(0xFFF4EAFF);
         button.setAllCaps(false);
