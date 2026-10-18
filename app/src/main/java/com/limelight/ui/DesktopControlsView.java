@@ -9,6 +9,9 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.Button;
+import android.graphics.drawable.Drawable;
+import android.util.TypedValue;
+import androidx.appcompat.widget.AppCompatButton;
 import android.view.Gravity;
 import com.limelight.overlay.OverlayLayout;
 import com.limelight.overlay.OverlayKeys;
@@ -98,6 +101,30 @@ public final class DesktopControlsView extends FrameLayout {
         return drawable;
     }
 
+    private Button actionButton(OverlayLayout.Item item, int icon) {
+        AppCompatButton button = new AppCompatButton(getContext());
+        button.setSupportBackgroundTintList(null);
+        button.setText(item.label());
+        button.setTextColor(0xFFF4EAFF);
+        button.setAllCaps(false);
+        button.setGravity(Gravity.CENTER);
+        button.setMinWidth(0); button.setMinimumWidth(0);
+        button.setMinHeight(0); button.setMinimumHeight(0);
+        button.setIncludeFontPadding(false);
+        button.setMaxLines(5);
+        button.setAutoSizeTextTypeUniformWithConfiguration(6, 11, 1, TypedValue.COMPLEX_UNIT_SP);
+        button.setBackground(background(true));
+        button.setContentDescription(item.label());
+        button.setFocusable(false);
+        if (icon != 0) {
+            Drawable drawable = getResources().getDrawable(icon, getContext().getTheme());
+            drawable.setBounds(0, 0, dp(18), dp(18));
+            button.setCompoundDrawables(null, drawable, null, null);
+            button.setCompoundDrawablePadding(dp(1));
+        }
+        return button;
+    }
+
     private ImageButton button(int icon, int description) {
         ImageButton button = new ImageButton(getContext());
         button.setImageResource(icon);
@@ -132,11 +159,7 @@ public final class DesktopControlsView extends FrameLayout {
             if ("trackpad".equals(item.type)) view = trackpad;
             else if ("eye".equals(item.type)) view = eye;
             else if ("key".equals(item.function())) {
-                Button key = new Button(getContext());
-                key.setText(item.label()); key.setTextColor(0xFFF4EAFF);
-                key.setTextSize(11); key.setAllCaps(false); key.setGravity(Gravity.CENTER);
-                key.setPadding(dp(3), 0, dp(3), 0); key.setBackground(background(true));
-                key.setContentDescription(item.label()); key.setFocusable(false);
+                Button key = actionButton(item, 0);
                 key.setOnTouchListener((v, event) -> {
                     if (event.getActionMasked() == MotionEvent.ACTION_DOWN && !pressedButtons.containsKey(v)) {
                         Set<Integer> previouslyHeld = heldKeys();
@@ -159,11 +182,7 @@ public final class DesktopControlsView extends FrameLayout {
                 int icon = "keyboard".equals(item.function()) ? R.drawable.ic_desktop_keyboard
                         : "home".equals(item.function()) ? R.drawable.ic_desktop_home
                         : "mouse".equals(item.function()) ? R.drawable.ic_desktop_mouse : R.drawable.ic_desktop_eye;
-                ImageButton button = new ImageButton(getContext());
-                button.setImageResource(icon); button.setBackground(background(true));
-                button.setPadding(dp(14), dp(14), dp(14), dp(14));
-                button.setScaleType(ImageButton.ScaleType.FIT_CENTER); button.setFocusable(false);
-                button.setContentDescription(item.label());
+                Button button = actionButton(item, icon);
                 button.setOnClickListener(v -> {
                     switch (item.function()) {
                         case "keyboard": keyboard.performClick(); break;
@@ -230,6 +249,14 @@ public final class DesktopControlsView extends FrameLayout {
             }
             int x = Math.max(0, Math.min(width - w, Math.round(item.x * width - w / 2f)));
             int y = Math.max(0, Math.min(height - h, Math.round(item.y * height - h / 2f)));
+            if (control instanceof Button) {
+                // Text must be measured at the actual circular control size, not
+                // the full overlay size inherited from FrameLayout's defaults.
+                int inset = Math.round(w * .15f);
+                control.setPadding(inset, Math.round(h * .10f), inset, Math.round(h * .10f));
+            }
+            control.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
             control.layout(x, y, x + w, y + h);
         }
     }

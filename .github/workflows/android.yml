@@ -75,7 +75,7 @@ jobs:
       - name: Upload development APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Occultation-0.1.7-dev-APKs
+          name: Occultation-0.1.8-dev-APKs
           path: app/build/outputs/apk/nonRoot_game/debug/*.apk
           if-no-files-found: error
       - name: Publish downloadable development APKs
@@ -99,7 +99,7 @@ jobs:
               shutil.copy2(root / element['outputFile'], Path('release-apks') / f'Occultation-{abi}.apk')
           shutil.copy2(root / 'development-signer.sha256', Path('release-apks/development-signer.sha256'))
           Path('release-apks/dev-build.json').write_text(json.dumps({
-              'version': '0.1.7-dev', 'commit': os.environ['GITHUB_SHA'],
+              'version': '0.1.8-dev', 'commit': os.environ['GITHUB_SHA'],
               'run': os.environ['GITHUB_RUN_ID'],
               'certificate_sha256': (root / 'development-signer.sha256').read_text().strip()}, indent=2) + '\n')
           if not Path('release-apks/Occultation-universal.apk').is_file():
@@ -107,8 +107,10 @@ jobs:
           PY
           (cd release-apks && sha256sum *.apk dev-build.json development-signer.sha256 > SHA256SUMS)
           cat > release-notes.md <<EOF
-          Occultation 0.1.7 development build
+          Occultation 0.1.8 development build
 
+          - Visible auto-sized action text on overlay buttons, including built-in actions; correct measurement at circular control bounds.
+          - Copyable neural hardware report under Video settings. This is diagnostics, not an active neural upscaler or a claim of TPU execution.
           - Purple geometric horizon artwork and translucent loading cards matching the overlay editor; live connection stage text and accessible loading status.
           - Assign keyboard keys, keyboard shortcuts, or built-in actions to cluster and custom buttons; delete buttons with confirmation.
           - Searchable key picker with F1–F24, numpad/media/browser keys and an advanced host-dependent key-code option.
@@ -133,9 +135,9 @@ jobs:
           Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           EOF
           if gh release view dev --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.7 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.8 Development' --notes-file release-notes.md --prerelease --latest=false
           else
-            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.7 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.8 Development' --notes-file release-notes.md --prerelease --latest=false
           fi
           gh release upload dev release-apks/* --repo "$GITHUB_REPOSITORY" --clobber
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/dev" -f sha="$GITHUB_SHA" -F force=true

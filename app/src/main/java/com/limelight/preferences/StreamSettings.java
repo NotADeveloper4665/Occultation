@@ -336,6 +336,30 @@ public class StreamSettings extends AppCompatActivity {
         public void initializePreferences() {
             addPreferencesFromResource(R.xml.preferences);
             PreferenceScreen screen = getPreferenceScreen();
+            Preference neuralReport = findPreference("neural_upscaling_report");
+            if (neuralReport != null) neuralReport.setOnPreferenceClickListener(preference -> {
+                android.app.Activity reportActivity = requireActivity();
+                android.content.Context context = reportActivity;
+                neuralReport.setEnabled(false);
+                new Thread(() -> {
+                    String report = com.limelight.neural.NeuralHardwareReport.collect();
+                    reportActivity.runOnUiThread(() -> {
+                        if (!isAdded() || reportActivity.isFinishing() || reportActivity.isDestroyed()) return;
+                        neuralReport.setEnabled(true);
+                        new androidx.appcompat.app.AlertDialog.Builder(context)
+                                .setTitle("Neural upscaling hardware report")
+                                .setMessage(report)
+                                .setPositiveButton("Copy report", (dialog, which) -> {
+                                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                                            context.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Neural hardware report", report));
+                                })
+                                .setNegativeButton("Close", null).show();
+                    });
+                }, "NeuralHardwareReport").start();
+                return true;
+            });
+
             Preference overlayEditor = findPreference("overlay_configuration");
             if (overlayEditor != null) overlayEditor.setOnPreferenceClickListener(preference -> {
                 startActivity(new Intent(requireContext(), com.limelight.overlay.OverlayEditorActivity.class));

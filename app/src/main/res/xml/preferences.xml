@@ -9,6 +9,10 @@
         android:title="@string/category_video_settings"
         app:initialExpandedChildrenCount="3"
         app:iconSpaceReserved="false">
+        <Preference
+            android:key="neural_upscaling_report"
+            android:title="Neural upscaling hardware report"
+            android:summary="Check and copy the accelerators exposed by this device. Neural upscaling is not enabled by this report." />
         <SwitchPreference
             android:key="wan_optimization"
             android:title="WAN / 5G Optimization"
