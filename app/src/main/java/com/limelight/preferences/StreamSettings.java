@@ -364,6 +364,12 @@ public class StreamSettings extends AppCompatActivity {
 
             }
 
+            Preference rifeTest = findPreference("rife_interpolation_test");
+            if (rifeTest != null) rifeTest.setOnPreferenceClickListener(preference -> {
+                com.limelight.interpolation.RifeTestUi.show(requireActivity());
+                return true;
+            });
+
             Preference overlayEditor = findPreference("overlay_configuration");
             if (overlayEditor != null) overlayEditor.setOnPreferenceClickListener(preference -> {
                 startActivity(new Intent(requireContext(), com.limelight.overlay.OverlayEditorActivity.class));
