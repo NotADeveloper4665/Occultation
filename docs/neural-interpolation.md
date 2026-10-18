@@ -2,7 +2,7 @@
 
 ## Status
 
-The adaptive policy and frame-admission controller are implemented and tested. They are deliberately not wired into the MediaCodec presentation path. No interpolation model, NNAPI model executor, frame conversion, generated-frame renderer or live network feed is implemented by these classes. There is no active frame-generation setting. Device enumeration from 0.1.8-dev is only diagnostics.
+The adaptive policy and frame-admission controller are implemented and tested. They are deliberately not wired into the MediaCodec presentation path. A reusable native NNAPI compiler/executor and explicit ADD-graph execution test are now implemented (see below). No interpolation model, frame conversion, generated-frame renderer or live network feed is connected. There is no active frame-generation setting. Device enumeration from 0.1.8-dev is only diagnostics.
 
 ## Established methods to evaluate
 
@@ -64,3 +64,47 @@ Invalidation does not release the active execution slot or in-use buffers. A bac
 ## Validation
 
 `tests/neural/InterpolationScenarios.java` is a standalone Java scenario suite run locally and in Android CI. It checks network degradation/recovery, stale/invalid telemetry, hardware gating, latency/compute/display budgets, quality hysteresis, bounded execution, late results, real-frame priority, frame loss, scene cuts, reconnects and resolution changes. These tests validate scheduling/admission only, not image quality, NNAPI inference or renderer performance.
+
+
+## Native Android accelerator backend (development branch)
+
+The native `NnapiRuntime` now loads public NNAPI functions dynamically and implements
+full operation-support checks, explicit single-ACCELERATOR compilation, low-latency
+compilation preference, synchronous tensor-buffer execution, and cleanup on every
+reported error. CPU, GPU, unknown and reference devices are excluded from this NPU
+path. This restriction avoids presenting general GPU or CPU execution as AI-chip
+execution; an ACCELERATOR driver still does not establish the identity of its silicon.
+There is no default-device compilation or software retry.
+
+Settings → Video → **Test AI accelerator (NNAPI)** runs a four-element float32 ADD
+graph on each exposed ACCELERATOR driver, checks the result, and reports one cold
+execution wall time including the execution setup and buffer-binding calls. Compilation
+is not included in that number. This small graph is an integration smoke test, not a
+neural image model, a useful performance benchmark, or proof of interpolation support.
+The existing hardware report remains enumeration-only. Diagnostics are explicit,
+run on a worker thread, and do not modify stream rendering. A process-wide guard
+prevents concurrent execution tests across activity recreation. Driver compilation
+and execution timeout requests are advisory; buffers and runtime objects remain alive
+until the driver returns. There is no unsafe timeout-driven buffer reuse.
+
+The reusable backend accepts a finished native NNAPI graph and its exact operation
+count; the trusted graph builder must supply that count. It does not parse arbitrary
+model files or import TFLite graphs. Integration of a trained/exported model, image
+buffer conversion, measured p95 costs, and decoder/render scheduling remains pending.
+Nothing in this change marks `nnapiGraphVerified` true for the interpolation policy.
+
+Validation: eight host fake-driver scenarios exercise real dynamic symbol loading,
+CPU exclusion, full graph support rejection, compilation/binding/execution failures,
+wrong-output rejection, and object cleanup. A separate unavailable-runtime case
+checks graceful failure. These tests do not claim physical NPU execution. Android CI
+also compiles the actual native module for packaged ABIs and runs existing app checks.
+
+Documented interfaces:
+- https://developer.android.com/ndk/guides/neuralnetworks
+- https://developer.android.com/ndk/reference/group/neural-networks
+- https://developer.android.com/ndk/guides/neuralnetworks/migration-guide
+
+NNAPI is the public Android compatibility backend, not a universal guarantee of NPU
+access. It is deprecated on Android 15 and later. A future LiteRT/vendor backend must
+meet the same graph verification and measured latency contract; Google Tensor brand
+names, SoC strings, and an available library alone must never enable frame generation.

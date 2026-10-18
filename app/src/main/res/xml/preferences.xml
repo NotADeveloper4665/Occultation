@@ -13,6 +13,10 @@
             android:key="neural_upscaling_report"
             android:title="Neural upscaling hardware report"
             android:summary="Check and copy the accelerators exposed by this device. Neural upscaling is not enabled by this report." />
+        <Preference
+            android:key="neural_accelerator_test"
+            android:title="Test AI accelerator (NNAPI)"
+            android:summary="Run a small calculation on an exposed accelerator and copy the result. May take time while the driver compiles. Does not enable frame generation." />
         <SwitchPreference
             android:key="wan_optimization"
             android:title="WAN / 5G Optimization"

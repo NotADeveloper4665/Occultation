@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include "nnapi_runtime.h"
 
 namespace {
 struct Device;
@@ -16,6 +17,11 @@ std::string quoted(const char* value) {
     }
     out << '"'; return out.str();
 }
+}
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_limelight_neural_NnapiDiagnostics_nativeSelfTest(JNIEnv* env, jclass) {
+    occultation::NnapiRuntime runtime;
+    return env->NewStringUTF(runtime.selfTest().c_str());
 }
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_limelight_neural_NeuralHardwareReport_nativeDevices(JNIEnv* env, jclass) {

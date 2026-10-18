@@ -59,6 +59,8 @@ jobs:
             keytool -genkeypair -keystore "$retained_key" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Occultation Development,O=Occultation,C=US'
           fi
           echo "OCCULTATION_DEV_KEYSTORE=$retained_key" >> "$GITHUB_ENV"
+      - name: Test native NNAPI backend
+        run: bash tests/neural/native/run.sh "$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include"
       - name: Test adaptive interpolation admission
         run: |
           mkdir -p build/neural-policy
