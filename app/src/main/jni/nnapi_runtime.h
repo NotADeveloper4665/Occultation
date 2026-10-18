@@ -1,6 +1,6 @@
 #pragma once
 
-#include <android/NeuralNetworks.h>
+#include <android/NeuralNetworksTypes.h>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -28,31 +28,37 @@ public:
     int execute(ANeuralNetworksCompilation* compilation, const std::vector<Buffer>& inputs,
                 const std::vector<Buffer>& outputs, uint64_t timeoutNs);
 
-#define NNAPI_FN(name) decltype(&ANeuralNetworks##name) name = nullptr
-    decltype(&ANeuralNetworks_getDeviceCount) getDeviceCount = nullptr;
-    decltype(&ANeuralNetworks_getDevice) getDevice = nullptr;
-    NNAPI_FN(Device_getName);
-    NNAPI_FN(Device_getType);
-    NNAPI_FN(Model_create);
-    NNAPI_FN(Model_free);
-    NNAPI_FN(Model_addOperand);
-    NNAPI_FN(Model_setOperandValue);
-    NNAPI_FN(Model_addOperation);
-    NNAPI_FN(Model_identifyInputsAndOutputs);
-    NNAPI_FN(Model_finish);
-    NNAPI_FN(Model_getSupportedOperationsForDevices);
-    NNAPI_FN(Compilation_createForDevices);
-    NNAPI_FN(Compilation_setPreference);
-    NNAPI_FN(Compilation_setTimeout);
-    NNAPI_FN(Compilation_finish);
-    NNAPI_FN(Compilation_free);
-    NNAPI_FN(Execution_create);
-    NNAPI_FN(Execution_setInput);
-    NNAPI_FN(Execution_setOutput);
-    NNAPI_FN(Execution_setTimeout);
-    NNAPI_FN(Execution_compute);
-    NNAPI_FN(Execution_free);
-#undef NNAPI_FN
+    // Explicit public ABI signatures avoid referencing unavailable function
+    // declarations while compiling the minSdk-21 module. Every call uses dlsym.
+    int (*getDeviceCount)(uint32_t*) = nullptr;
+    int (*getDevice)(uint32_t, ANeuralNetworksDevice**) = nullptr;
+    int (*Device_getName)(const ANeuralNetworksDevice*, const char**) = nullptr;
+    int (*Device_getType)(const ANeuralNetworksDevice*, int32_t*) = nullptr;
+    int (*Model_create)(ANeuralNetworksModel**) = nullptr;
+    void (*Model_free)(ANeuralNetworksModel*) = nullptr;
+    int (*Model_addOperand)(ANeuralNetworksModel*, const ANeuralNetworksOperandType*) = nullptr;
+    int (*Model_setOperandValue)(ANeuralNetworksModel*, int32_t, const void*, size_t) = nullptr;
+    int (*Model_addOperation)(ANeuralNetworksModel*, ANeuralNetworksOperationType, uint32_t,
+                             const uint32_t*, uint32_t, const uint32_t*) = nullptr;
+    int (*Model_identifyInputsAndOutputs)(ANeuralNetworksModel*, uint32_t, const uint32_t*,
+                                         uint32_t, const uint32_t*) = nullptr;
+    int (*Model_finish)(ANeuralNetworksModel*) = nullptr;
+    int (*Model_getSupportedOperationsForDevices)(const ANeuralNetworksModel*,
+            const ANeuralNetworksDevice* const*, uint32_t, bool*) = nullptr;
+    int (*Compilation_createForDevices)(ANeuralNetworksModel*, const ANeuralNetworksDevice* const*,
+                                         uint32_t, ANeuralNetworksCompilation**) = nullptr;
+    int (*Compilation_setPreference)(ANeuralNetworksCompilation*, int32_t) = nullptr;
+    int (*Compilation_setTimeout)(ANeuralNetworksCompilation*, uint64_t) = nullptr;
+    int (*Compilation_finish)(ANeuralNetworksCompilation*) = nullptr;
+    void (*Compilation_free)(ANeuralNetworksCompilation*) = nullptr;
+    int (*Execution_create)(ANeuralNetworksCompilation*, ANeuralNetworksExecution**) = nullptr;
+    int (*Execution_setInput)(ANeuralNetworksExecution*, int32_t, const ANeuralNetworksOperandType*,
+                               const void*, size_t) = nullptr;
+    int (*Execution_setOutput)(ANeuralNetworksExecution*, int32_t, const ANeuralNetworksOperandType*,
+                                void*, size_t) = nullptr;
+    int (*Execution_setTimeout)(ANeuralNetworksExecution*, uint64_t) = nullptr;
+    int (*Execution_compute)(ANeuralNetworksExecution*) = nullptr;
+    void (*Execution_free)(ANeuralNetworksExecution*) = nullptr;
 private:
     void* library_ = nullptr;
     bool ready_ = false;
