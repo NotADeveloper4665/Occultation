@@ -369,6 +369,7 @@ public class PreferenceConfiguration {
     public boolean touchscreenTrackpad;
     public MoonBridge.AudioConfiguration audioConfiguration;
     public boolean wanOptimization;
+    public boolean vulkanVideoOutput, mediatekHardwareBuffer;
     public int framePacing;
     public boolean absoluteMouseMode;
     public boolean enableAudioFx;
@@ -862,6 +863,8 @@ private static int getFramePacingValue(Context context) {
         config.videoFormat = getVideoFormatValue(context);
         config.framePacing = getFramePacingValue(context);
         config.wanOptimization = prefs.getBoolean("wan_optimization", false);
+        config.vulkanVideoOutput = prefs.getBoolean("vulkan_video_output", false);
+        config.mediatekHardwareBuffer = prefs.getBoolean("mediatek_hardware_buffer", false);
         if (config.wanOptimization) {
             config.framePacing = FRAME_PACING_MIN_LATENCY;
             config.framePacingWarpFactor = 0;

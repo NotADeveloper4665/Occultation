@@ -556,7 +556,8 @@ public class MediaCodecHelper {
         }
         if (tryNumber < 1) {
             // Official Android 11+ low latency option (KEY_LOW_LATENCY).
-            videoFormat.setInteger("low-latency", 1);
+            if (Build.VERSION.SDK_INT >= 30) videoFormat.setInteger(MediaFormat.KEY_LOW_LATENCY, 1);
+            else videoFormat.setInteger("low-latency", 1); // compatibility vendor hint
             setNewOption = true;
 
             // If this decoder officially supports FEATURE_LowLatency, we will just use that alone
@@ -933,7 +934,7 @@ public class MediaCodecHelper {
         return str;
     }
 
-    private static MediaCodecInfo findPreferredDecoder() {
+    private static MediaCodecInfo findPreferredDecoder(String mimeType) {
         // This is a different algorithm than the other findXXXDecoder functions,
         // because we want to evaluate the decoders in our list's order
         // rather than MediaCodecList's order
@@ -950,7 +951,8 @@ public class MediaCodecHelper {
                 }
 
                 // Check for preferred decoders
-                if (preferredDecoder.equalsIgnoreCase(codecInfo.getName())) {
+                if (preferredDecoder.equalsIgnoreCase(codecInfo.getName()) && !isCodecBlacklisted(codecInfo) &&
+                        java.util.Arrays.asList(codecInfo.getSupportedTypes()).contains(mimeType)) {
                     LimeLog.info("Preferred decoder choice is "+codecInfo.getName());
                     return codecInfo;
                 }
@@ -961,9 +963,10 @@ public class MediaCodecHelper {
     }
 
     private static boolean isCodecBlacklisted(MediaCodecInfo codecInfo) {
-        // Use the new isSoftwareOnly() function on Android Q
+        if (!SHOULD_BYPASS_SOFTWARE_BLOCK && com.limelight.binding.video.ahb.DisplayPolicy.softwareCodecName(codecInfo.getName())) return true;
+        // Use the platform classification, not a hardcoded vendor decoder name.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (!SHOULD_BYPASS_SOFTWARE_BLOCK && codecInfo.isSoftwareOnly()) {
+            if (!SHOULD_BYPASS_SOFTWARE_BLOCK && (codecInfo.isSoftwareOnly() || !codecInfo.isHardwareAccelerated())) {
                 LimeLog.info("Skipping software-only decoder: "+codecInfo.getName());
                 return true;
             }
@@ -1011,7 +1014,7 @@ public class MediaCodecHelper {
 
     public static MediaCodecInfo findProbableSafeDecoder(String mimeType, int requiredProfile) {
         // First look for a preferred decoder by name
-        MediaCodecInfo info = findPreferredDecoder();
+        MediaCodecInfo info = findPreferredDecoder(mimeType);
         if (info != null) {
             return info;
         }
@@ -1403,7 +1406,7 @@ public class MediaCodecHelper {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             try {
                 android.os.Bundle b = new android.os.Bundle();
-                b.putInt("low-latency", 1);   // A11+ parameter key
+                b.putInt(MediaCodec.PARAMETER_KEY_LOW_LATENCY, 1);
                 codec.setParameters(b);
                 try { LimeLog.info("Applied post-start low-latency parameter"); } catch (Throwable ignored) {}
             } catch (Throwable ignored) {}

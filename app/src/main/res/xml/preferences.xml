@@ -22,6 +22,20 @@
             android:title="Test RIFE frame interpolation"
             android:summary="Generate a test middle frame using Vulkan GPU or try RIFE Lite through strict NNAPI. Does not enable stream frame generation." />
         <SwitchPreference
+            android:key="vulkan_video_output"
+            android:title="Vulkan video output (experimental)"
+            android:summary="Use GPU-sampled HardwareBuffers and a dedicated FIFO presentation thread for SDR video on Android 13+. Unsupported devices return to standard output."
+            android:defaultValue="false" />
+        <SwitchPreference
+            android:key="mediatek_hardware_buffer"
+            android:title="Prefer AHardwareBuffer on MediaTek"
+            android:summary="Select the experimental Vulkan output on detected MediaTek devices. Requires Android 13+ and supported buffer imports."
+            android:defaultValue="false" />
+        <Preference
+            android:key="arm_asr_status"
+            android:title="Arm ASR availability"
+            android:summary="Check whether this stream supplies the depth, motion vectors and jitter required by temporal upscaling." />
+        <SwitchPreference
             android:key="wan_optimization"
             android:title="WAN / 5G Optimization"
             android:summary="Use smaller packets, responsive rendering and compatible Syzygy network adaptation. Unsupported host features keep normal behavior. Applies to the next stream."

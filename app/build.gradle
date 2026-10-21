@@ -212,3 +212,13 @@ tasks.configureEach { task ->
         task.dependsOn(prepareRife)
     }
 }
+
+def prepareDisplayShaders = tasks.register('prepareDisplayShaders', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'python3', 'scripts/display/compile_shaders.py'
+    inputs.files(rootProject.file('scripts/display/compile_shaders.py'), fileTree('src/main/jni/display') { include '*.vert', '*.frag' })
+    outputs.dir(layout.buildDirectory.dir('display'))
+}
+tasks.configureEach { task ->
+    if (task.name.startsWith('configureNdkBuild') || task.name.startsWith('buildNdkBuild')) task.dependsOn(prepareDisplayShaders)
+}

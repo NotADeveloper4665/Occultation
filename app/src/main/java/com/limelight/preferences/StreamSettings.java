@@ -364,6 +364,14 @@ public class StreamSettings extends AppCompatActivity {
 
             }
 
+            Preference asrStatus = findPreference("arm_asr_status");
+            if (asrStatus != null) asrStatus.setOnPreferenceClickListener(preference -> {
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext()).setTitle("Arm ASR availability")
+                        .setMessage(com.limelight.binding.video.ahb.ArmAsrInputs.unavailableReason(true, false, false, false))
+                        .setPositiveButton("OK", null).show();
+                return true;
+            });
+
             Preference rifeTest = findPreference("rife_interpolation_test");
             if (rifeTest != null) rifeTest.setOnPreferenceClickListener(preference -> {
                 com.limelight.interpolation.RifeTestUi.show(requireActivity());
