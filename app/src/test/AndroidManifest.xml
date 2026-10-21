@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:tools="http://schemas.android.com/tools">
+    <!-- Mirror the app's guarded, optional-runtime compatibility rule. -->
+    <uses-sdk tools:overrideLibrary="ai.onnxruntime" />
+</manifest>

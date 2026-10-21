@@ -199,6 +199,44 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private boolean invertResolution;
     private int videoFormat;
     private Surface renderTarget;
+    private com.limelight.binding.video.ahb.HardwareBufferPresenter hardwarePresenter;
+    private volatile boolean hardwarePresenterFailed;
+    private volatile String displayBackend = "MediaCodec Surface";
+
+    private void releaseHardwarePresenter() {
+        if (Build.VERSION.SDK_INT >= 33 && hardwarePresenter != null) { hardwarePresenter.close(); hardwarePresenter = null; }
+        displayBackend = "MediaCodec Surface";
+    }
+
+    private Surface decoderOutputSurface() {
+        releaseHardwarePresenter();
+        boolean mediaTek = com.limelight.binding.video.ahb.DisplayPolicy.isMediaTek(
+                Build.MANUFACTURER, Build.HARDWARE, Build.VERSION.SDK_INT >= 31 ? Build.SOC_MODEL : "");
+        boolean hdr = (videoFormat & MoonBridge.VIDEO_FORMAT_MASK_10BIT) != 0 || currentHdrMetadata != null;
+        if (Build.VERSION.SDK_INT >= 33 && !hardwarePresenterFailed &&
+                com.limelight.binding.video.ahb.DisplayPolicy.useAhb(Build.VERSION.SDK_INT, hdr,
+                        prefs.vulkanVideoOutput, prefs.mediatekHardwareBuffer, mediaTek)) {
+            try {
+                hardwarePresenter = new com.limelight.binding.video.ahb.HardwareBufferPresenter(
+                        renderTarget, initialWidth, initialHeight,
+                        getPreferredColorSpace() == MoonBridge.COLORSPACE_REC_709 ? 1 : getPreferredColorSpace() == MoonBridge.COLORSPACE_REC_2020 ? 2 : 0,
+                        getPreferredColorRange() == MoonBridge.COLOR_RANGE_FULL ? 1 : 0,
+                        prefs.videoScaleMode == PreferenceConfiguration.ScaleMode.FILL ? 1 : prefs.videoScaleMode == PreferenceConfiguration.ScaleMode.STRETCH ? 2 : 0, error -> {
+                    LimeLog.warning("AHB Vulkan failed; requesting standard output recovery: " + error);
+                    hardwarePresenterFailed = true;
+                    codecRecoveryType.compareAndSet(CR_RECOVERY_TYPE_NONE, CR_RECOVERY_TYPE_RESTART);
+                });
+                displayBackend = "AHardwareBuffer / Vulkan FIFO / sampler YCbCr";
+                LimeLog.info("Display backend: " + displayBackend);
+                return hardwarePresenter.decoderSurface();
+            } catch (RuntimeException | LinkageError error) {
+                hardwarePresenterFailed = true;
+                releaseHardwarePresenter();
+                LimeLog.warning("AHB Vulkan unavailable; using standard output: " + error);
+            }
+        }
+        return renderTarget;
+    }
     private volatile boolean stopping;
     private CrashListener crashListener;
     private boolean reportedCrash;
@@ -688,7 +726,7 @@ this.prefs = prefs;
 
         LimeLog.info("Configuring with format: "+format);
 
-        videoDecoder.configure(format, renderTarget, null, 0);
+        videoDecoder.configure(format, decoderOutputSurface(), null, 0);
 
         try { applySurfaceFrameRate(renderTarget, targetFps); } catch (Throwable ignored) {}
 
@@ -842,8 +880,12 @@ android.media.MediaFormat __inF = null, __outF = null;
             }
         } finally {
             if (!configured && videoDecoder != null) {
-                videoDecoder.release();
-                videoDecoder = null;
+                try { videoDecoder.release(); }
+                finally {
+                    videoDecoder = null;
+                    if (hardwarePresenter != null) hardwarePresenterFailed = true;
+                    releaseHardwarePresenter();
+                }
             }
         }
         return configured;
@@ -1996,7 +2038,7 @@ if (preferLowerDelays) {
 
         // Wait for the renderer thread to shut down
         try {
-            rendererThread.join();
+            if (rendererThread != null) rendererThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
 
@@ -2009,7 +2051,8 @@ if (preferLowerDelays) {
 
     @Override
     public void cleanup() {
-        videoDecoder.release();
+        try { if (videoDecoder != null) { videoDecoder.release(); videoDecoder = null; } }
+        finally { releaseHardwarePresenter(); }
     }
 
     @Override
@@ -2653,6 +2696,7 @@ if (preferLowerDelays) {
             }
 
             str += "Format: "+String.format("%x", renderer.videoFormat)+DELIMITER;
+            str += "Display backend: " + renderer.displayBackend + DELIMITER;
             str += "AVC Decoder: "+((renderer.avcDecoder != null) ? renderer.avcDecoder.getName():"(none)")+DELIMITER;
             str += "HEVC Decoder: "+((renderer.hevcDecoder != null) ? renderer.hevcDecoder.getName():"(none)")+DELIMITER;
             str += "AV1 Decoder: "+((renderer.av1Decoder != null) ? renderer.av1Decoder.getName():"(none)")+DELIMITER;

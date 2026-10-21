@@ -12,7 +12,7 @@ public final class NeuralHardwareReport {
         report.append("Device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL);
         report.append("\nAndroid API: ").append(Build.VERSION.SDK_INT);
         if (Build.VERSION.SDK_INT >= 31) report.append("\nSoC: ").append(Build.SOC_MANUFACTURER).append(' ').append(Build.SOC_MODEL);
-        report.append("\nNeural upscaling: not active; no inference model is installed.\n");
+        report.append("\nNeural upscaling: not active; no upscaling model is installed. RIFE interpolation models are bundled for explicit frame-pair tests only.\n");
         report.append("Google Tensor SDK currently lists G5/G6. Pixel 9a (G4) is outside that supported path.\n");
         report.append("NNAPI is deprecated on Android 15+. Device names below are diagnostic, not proof of TPU acceleration.\n\n");
         try {

@@ -4,7 +4,7 @@
 
 Settings → Video → Neural upscaling hardware report queries the actual installed NNAPI runtime for exposed device names, types, driver versions and feature levels. Copy the report for device testing. This read-only operation runs outside the UI thread, dynamically loads the native NNAPI library only for the query, and leaves MediaCodec's normal Surface rendering intact. Older Android versions and missing native libraries produce an explicit unavailable message.
 
-This build does not contain a trained upscaling model or perform neural inference. Enumeration is not evidence of a compatible super-resolution model, TPU execution or suitable frame latency. CPU and GPU devices are labeled as such. No neural-upscaling switch is enabled by this report.
+This build does not contain a trained upscaling model or perform neural image inference. The development branch adds a user-triggered NNAPI ADD-graph execution test and reusable native graph compiler/executor; see neural-interpolation.md. Enumeration is not evidence of a compatible super-resolution model, TPU execution or suitable frame latency. CPU and GPU devices are labeled as such. No neural-upscaling switch is enabled by this report.
 
 ## Verified API limitation
 

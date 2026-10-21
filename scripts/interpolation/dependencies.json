@@ -1,0 +1,158 @@
+{
+  "rife_commit": "a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7",
+  "ncnn": {
+    "url": "https://github.com/Tencent/ncnn/releases/download/20240410/ncnn-20240410-android-vulkan.zip",
+    "sha256": "352f7f6b11e862c72b72de4b8133e0b237b43d030c079aa8ed653f3c8e944580"
+  },
+  "lite": {
+    "url": "https://github.com/AmusementClub/vs-mlrt/releases/download/external-models/rife_v4.25_lite.7z",
+    "sha256": "7d53e29fff5e67345b19f4ce97dfd1e34b490eedc752df2236904fda1a13842c",
+    "entry": "rife_v2/rife_v4.25_lite.onnx",
+    "model_sha256": "610b5de57cdcfbcce9914c23e60a1cd357779a6f9582a1bcfcb035f8eb38509b",
+    "license": "MIT",
+    "author": "Zhewei Huang / Practical-RIFE",
+    "converter": "AmusementClub/vs-mlrt"
+  },
+  "files": [
+    {
+      "path": "src/rife_v2_flow_tta_temporal_avg.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_v2_flow_tta_temporal_avg.comp",
+      "sha256": "e86cf55c8db667357a4f3046f85fc7f560fabc4b3a275490c34ef1905f94d1d7"
+    },
+    {
+      "path": "src/rife_preproc_tta.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_preproc_tta.comp",
+      "sha256": "665d8f37408033784e1f60f0d0ebcb5462caced0b6951e3e1fbb82c9c2e9e47c"
+    },
+    {
+      "path": "src/warp.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/warp.comp",
+      "sha256": "febf4ce8e214300f92a6d9ab60f1ad8cf7b9adb4d5b62cfc6d0653d527976e08"
+    },
+    {
+      "path": "src/generate_shader_comp_header.cmake",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/generate_shader_comp_header.cmake",
+      "sha256": "d5a0cb82b2795824430a7de9ea1dbeedc62120299314ce35ddd38ee201dadcc7"
+    },
+    {
+      "path": "src/rife_v2_flow_tta_avg.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_v2_flow_tta_avg.comp",
+      "sha256": "b38abdd850addafe48f88d9829f2d6117fe2d780cd951a40542bc7115e822c4a"
+    },
+    {
+      "path": "src/rife_flow_tta_avg.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_flow_tta_avg.comp",
+      "sha256": "7b7467125a5d81aac97053741c10798fb450ff3dee0a27a91e9778cbf4dcbebf"
+    },
+    {
+      "path": "src/rife.h",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife.h",
+      "sha256": "785386d7d63c28f09f74fa1e3c6e0e7ae84e8a7efd15b7f68d238d578aad1298"
+    },
+    {
+      "path": "src/warp_pack4.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/warp_pack4.comp",
+      "sha256": "37f8c40d29d9989df4cff37cb441ef0a42edb783529833acdb0d30c3c7fb7874"
+    },
+    {
+      "path": "src/rife_flow_tta_temporal_avg.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_flow_tta_temporal_avg.comp",
+      "sha256": "c5c30bcdad108a75a4d42704ce1e2f79a8eee3c0eb2d929fb6b25e50d4e59851"
+    },
+    {
+      "path": "src/rife.cpp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife.cpp",
+      "sha256": "375beadc59ca08a4f925baa16378f46cfffdf34e752a5392732d1f9d9c78c339"
+    },
+    {
+      "path": "src/rife_v4_timestep.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_v4_timestep.comp",
+      "sha256": "df45535d5694829a3cd844594ae5645901d220722c86d10e9b37dcfaf12e83df"
+    },
+    {
+      "path": "src/rife_preproc.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_preproc.comp",
+      "sha256": "84adf62ac32ba9e8abc2aad2358878f9e4df20170aa63968f4b27bd9f046adb0"
+    },
+    {
+      "path": "src/rife_v4_flow_tta_temporal_avg.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_v4_flow_tta_temporal_avg.comp",
+      "sha256": "eb12d3b462d450b186fd42eae8e13c60b71326ddf6f5c3616bf0fc12eb98a664"
+    },
+    {
+      "path": "src/rife_postproc_tta.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_postproc_tta.comp",
+      "sha256": "8956a15b176238f9d763670e2e92af1fdc0f79d5672870356260600c66084016"
+    },
+    {
+      "path": "src/warp_pack8.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/warp_pack8.comp",
+      "sha256": "8cdeae0d1fed3092cf5f9046a2b14f8847c26ea756f6dd262377b60707871d06"
+    },
+    {
+      "path": "src/rife_ops.h",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_ops.h",
+      "sha256": "b22ed5400f8b6f098490725123dc9d2078e8384a051d4487aeccf2b0e65e5c82"
+    },
+    {
+      "path": "src/rife_v4_timestep_tta.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_v4_timestep_tta.comp",
+      "sha256": "af9d1a181865a3c20f915be2fae895fb522ac6f5b5d8b5aaecb5f2ed8b9cbd5a"
+    },
+    {
+      "path": "src/rife_v4_flow_tta_avg.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_v4_flow_tta_avg.comp",
+      "sha256": "a38b078d3ba741520f16fb0d95af60ca835e4f11fdfe7081534f8f4595fedf94"
+    },
+    {
+      "path": "src/warp.cpp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/warp.cpp",
+      "sha256": "b3265e82aac39ffdb697bc25a0980e7f52c5b0b911d2b32c537fc40f7bcd8d02"
+    },
+    {
+      "path": "src/rife_postproc.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_postproc.comp",
+      "sha256": "4afbbfb2ae4c221a7279d3cd0b171789fa16fd66e234cf8f56b038e9c6171f11"
+    },
+    {
+      "path": "src/rife_out_tta_temporal_avg.comp",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/src/rife_out_tta_temporal_avg.comp",
+      "sha256": "85843577fbb850910be33e7d09affe3bfe8b259d5f67c40b8b0124475500414e"
+    },
+    {
+      "path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/LICENSE",
+      "sha256": "a73beab18143600af0b10c6050a953ec233775ce31c2bf3373a794db535329fd"
+    },
+    {
+      "path": "models/rife-v4/flownet.param",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/models/rife-v4/flownet.param",
+      "sha256": "1fec6c821c62f9d9d81f529b6a44d678b2e3d354131251e7ca4dbd36fc2f0577"
+    },
+    {
+      "path": "models/rife-v4/flownet.bin",
+      "url": "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7/models/rife-v4/flownet.bin",
+      "sha256": "f307230e32bffeaef5d27a1ea48ec4a67371f99e363ffde1f0f62016a1f725b4"
+    },
+    {
+      "path": "licenses/Practical-RIFE-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/hzwer/Practical-RIFE/bbfd2ea90910789a860ea3e2b32a240cd577b75e/LICENSE",
+      "sha256": "7932fb49341512b959b1744a6d9cbb39e5a1ec89da438a34d0454d5d8df9fecd"
+    },
+    {
+      "path": "licenses/ncnn-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/Tencent/ncnn/20240410/LICENSE.txt",
+      "sha256": "6495f972a09ad7f64ccd953e79adba91a93d862edc7135e6d95210bbf4002a01"
+    },
+    {
+      "path": "licenses/glslang-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/KhronosGroup/glslang/4420f9b33ba44928d5c82d9eae0c3bb4d5674c05/LICENSE.txt",
+      "sha256": "adb783e734e906d1f46db5df29991dbde84bdb0ceab502ac2febb44fe3c2b5f4"
+    },
+    {
+      "path": "licenses/ONNXRuntime-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/v1.22.0/LICENSE",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    }
+  ]
+}

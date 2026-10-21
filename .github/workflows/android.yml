@@ -59,6 +59,19 @@ jobs:
             keytool -genkeypair -keystore "$retained_key" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Occultation Development,O=Occultation,C=US'
           fi
           echo "OCCULTATION_DEV_KEYSTORE=$retained_key" >> "$GITHUB_ENV"
+      - name: Install pinned model archive reader
+        run: python3 -m pip install py7zr==1.1.4 onnx==1.17.0
+      - name: Prepare and validate pinned RIFE models
+        run: |
+          python3 scripts/interpolation/prepare.py
+          python3 scripts/interpolation/validate_models.py
+      - name: Test native NNAPI backend
+        run: bash tests/neural/native/run.sh "$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include"
+      - name: Test adaptive interpolation admission
+        run: |
+          mkdir -p build/neural-policy
+          javac -d build/neural-policy app/src/main/java/com/limelight/neural/AdaptiveInterpolationPolicy.java app/src/main/java/com/limelight/neural/InterpolationAdmission.java tests/neural/InterpolationScenarios.java
+          java -cp build/neural-policy InterpolationScenarios
       - name: Test signing verification
         run: python3 -m unittest discover -s scripts -p 'test_development_signing.py' -v
       - name: Test, lint and build development APKs

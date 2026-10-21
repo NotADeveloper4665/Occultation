@@ -179,6 +179,7 @@ dependencies {
     implementation 'org.bouncycastle:bcprov-jdk18on:1.81'
     implementation 'org.bouncycastle:bcpkix-jdk18on:1.81'
     implementation 'org.jcodec:jcodec:0.2.5'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'org.jmdns:jmdns:3.6.2'
     implementation 'com.github.cgutman:ShieldControllerExtensions:1.0.1'
@@ -195,4 +196,29 @@ dependencies {
     testImplementation 'androidx.test:core:1.7.0'
     testImplementation 'org.robolectric:robolectric:4.16'
     testImplementation 'org.mockito:mockito-core:5.19.0'
+}
+
+// Keep source, SDK and model downloads reproducible and outside the source tree.
+def prepareRife = tasks.register('prepareRife', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'python3', 'scripts/interpolation/prepare.py'
+    inputs.files(rootProject.file('scripts/interpolation/prepare.py'), rootProject.file('scripts/interpolation/dependencies.json'))
+    outputs.dir(layout.buildDirectory.dir('interpolation'))
+}
+android.sourceSets.main.assets.srcDir(layout.buildDirectory.dir('interpolation/assets'))
+tasks.configureEach { task ->
+    if (task.name.startsWith('configureNdkBuild') || task.name.startsWith('buildNdkBuild') ||
+        task.name == 'preBuild' || (task.name.startsWith('merge') && task.name.endsWith('Assets'))) {
+        task.dependsOn(prepareRife)
+    }
+}
+
+def prepareDisplayShaders = tasks.register('prepareDisplayShaders', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'python3', 'scripts/display/compile_shaders.py'
+    inputs.files(rootProject.file('scripts/display/compile_shaders.py'), fileTree('src/main/jni/display') { include '*.vert', '*.frag' })
+    outputs.dir(layout.buildDirectory.dir('display'))
+}
+tasks.configureEach { task ->
+    if (task.name.startsWith('configureNdkBuild') || task.name.startsWith('buildNdkBuild')) task.dependsOn(prepareDisplayShaders)
 }
