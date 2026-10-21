@@ -1,5 +1,6 @@
 package com.limelight.binding.video.ahb;
 
+import android.annotation.SuppressLint;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.HardwareBuffer;
@@ -44,6 +45,9 @@ public final class HardwareBufferPresenter implements AutoCloseable {
         } catch (ExecutionException error) { close(); throw new IllegalStateException("AHB Vulkan display unavailable", error.getCause()); }
     }
     public Surface decoderSurface() { return reader.getSurface(); }
+    // Image.getDataSpace() has a broader IntDef than these bitfield extractors.
+    // The extractors safely mask standard/range/transfer bits, including UNKNOWN.
+    @SuppressLint("WrongConstant")
     private void presentLatest(ImageReader source) {
         try (Image image = source.acquireLatestImage()) {
             if (image == null || closed || failed) return;
