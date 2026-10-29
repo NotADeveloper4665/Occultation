@@ -16,7 +16,6 @@ import com.limelight.binding.input.KeyboardTranslator;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
 import com.limelight.binding.input.touch.AbsoluteTouchContext;
-import com.limelight.binding.input.touch.NativeTouchContext;
 import com.limelight.binding.input.touch.RelativeTouchContext;
 import com.limelight.binding.input.driver.UsbDriverService;
 import com.limelight.binding.input.evdev.EvdevListener;
@@ -148,6 +147,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     // Only 2 touches are supported
     private final TouchContext[] touchContextMap = new TouchContext[2];
+    private boolean nativeTouchOnlyMode;
     private final TouchContext[] trackpadContextMap = new TouchContext[2];
     private PanZoomHandler panZoomHandler;
     private long threeFingerDownTime = 0;
@@ -3068,10 +3068,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         }
                     }
 
-                    if (prefConfig.enableMultiTouchScreen && !prefConfig.touchscreenTrackpad && trySendTouchEvent(view, event)) {
-                        // If this host supports touch events and absolute touch is enabled,
-                        // send it directly as a touch event.
-                        return true;
+                    if (prefConfig.enableMultiTouchScreen && !prefConfig.touchscreenTrackpad) {
+                        boolean sentNativeTouch = trySendTouchEvent(view, event);
+                        if (sentNativeTouch || nativeTouchOnlyMode) {
+                            // Native-touch-only mode consumes the event even when the host
+                            // reports unsupported, preventing accidental mouse emulation.
+                            return true;
+                        }
                     }
 
                     return handleTouchInput(event, touchContextMap, true);
@@ -4185,6 +4188,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private void applyMouseMode(int mode) {
+        nativeTouchOnlyMode = mode == 7;
         if (desktopControls != null) {
             ((android.view.ViewGroup) desktopControls.getParent()).removeView(desktopControls);
             desktopControls = null;
@@ -4222,7 +4226,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 // Touch mouse disabled
                 touchContextMap[i] = null;
             } else if (mode == 7) {
-                touchContextMap[i] = new NativeTouchContext(i, streamView);
+                // Native input is handled by trySendTouchEvent(); never fall back to mouse emulation.
+                touchContextMap[i] = null;
             } else if (!prefConfig.touchscreenTrackpad) {
                 touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, mode == 5);
             } else if (mode == 3 || mode == 6) {
