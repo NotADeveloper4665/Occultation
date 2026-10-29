@@ -171,6 +171,7 @@
         <item>@string/mouse_mode_disabled</item>
         <item>@string/mouse_mode_absolute_touch_swapped</item>
         <item>@string/mouse_mode_remote_desktop</item>
+        <item>@string/mouse_mode_native_touch</item>
     </string-array>
     <string-array name="mouse_mode_values" translatable="false">
         <item>0</item>
@@ -180,6 +181,7 @@
         <item>4</item>
         <item>5</item>
         <item>6</item>
+        <item>7</item>
     </string-array>
 
     <string-array name="onscreen_keyboard_align_modes">
