@@ -12,6 +12,7 @@ import com.limelight.binding.PlatformBinding;
 import com.limelight.binding.audio.AndroidAudioRenderer;
 import com.limelight.binding.input.ControllerHandler;
 import com.limelight.binding.input.GameInputDevice;
+import com.limelight.binding.input.InputModeRouter;
 import com.limelight.binding.input.KeyboardTranslator;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
@@ -148,6 +149,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     // Only 2 touches are supported
     private final TouchContext[] touchContextMap = new TouchContext[2];
     private boolean nativeTouchOnlyMode;
+    private int activeInputMode = InputModeRouter.MULTI_TOUCH;
+    private boolean nativeTouchWarningShown;
     private final TouchContext[] trackpadContextMap = new TouchContext[2];
     private PanZoomHandler panZoomHandler;
     private long threeFingerDownTime = 0;
@@ -3070,9 +3073,14 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                     if (prefConfig.enableMultiTouchScreen && !prefConfig.touchscreenTrackpad) {
                         boolean sentNativeTouch = trySendTouchEvent(view, event);
-                        if (sentNativeTouch || nativeTouchOnlyMode) {
-                            // Native-touch-only mode consumes the event even when the host
-                            // reports unsupported, preventing accidental mouse emulation.
+                        if (!sentNativeTouch && InputModeRouter.consumesTouchWhenNativeUnsupported(activeInputMode)
+                                && !nativeTouchWarningShown) {
+                            nativeTouchWarningShown = true;
+                            Toast.makeText(this,
+                                    "The host did not accept native touch. Try Remote desktop or Multi-touch mode.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                        if (InputModeRouter.consumeNativeTouchResult(activeInputMode, sentNativeTouch)) {
                             return true;
                         }
                     }
@@ -4188,7 +4196,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private void applyMouseMode(int mode) {
-        nativeTouchOnlyMode = mode == 7;
+        activeInputMode = InputModeRouter.normalize(mode);
+        nativeTouchOnlyMode = InputModeRouter.consumesTouchWhenNativeUnsupported(activeInputMode);
+        nativeTouchWarningShown = false;
         if (desktopControls != null) {
             ((android.view.ViewGroup) desktopControls.getParent()).removeView(desktopControls);
             desktopControls = null;
@@ -4222,10 +4232,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         //Initialize touch contexts
         for (int i = 0; i < touchContextMap.length; i++) {
             if (touchContextMap[i] != null) touchContextMap[i].cancelTouch();
-            if (mode == 4) {
+            if (InputModeRouter.isDisabled(activeInputMode)) {
                 // Touch mouse disabled
                 touchContextMap[i] = null;
-            } else if (mode == 7) {
+            } else if (InputModeRouter.consumesTouchWhenNativeUnsupported(activeInputMode)) {
                 // Native input is handled by trySendTouchEvent(); never fall back to mouse emulation.
                 touchContextMap[i] = null;
             } else if (!prefConfig.touchscreenTrackpad) {
@@ -4237,7 +4247,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             }
         }
 
-        if (mode == 6) {
+        if (InputModeRouter.usesDesktopControls(activeInputMode)) {
             desktopControls = new com.limelight.ui.DesktopControlsView(this,
                     this::toggleKeyboard,
                     () -> sendKeys(new short[]{(short) 0x805B}),
