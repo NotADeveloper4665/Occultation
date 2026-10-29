@@ -16,6 +16,7 @@ import com.limelight.binding.input.KeyboardTranslator;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
 import com.limelight.binding.input.touch.AbsoluteTouchContext;
+import com.limelight.binding.input.touch.NativeTouchContext;
 import com.limelight.binding.input.touch.RelativeTouchContext;
 import com.limelight.binding.input.driver.UsbDriverService;
 import com.limelight.binding.input.evdev.EvdevListener;
@@ -4199,7 +4200,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             case 2: // Trackpad (natural)
             case 3: // Trackpad (gaming)
             case 6: // Remote desktop
-                prefConfig.enableMultiTouchScreen = false;
+            case 7: // Native touch input
+                prefConfig.enableMultiTouchScreen = mode == 7;
                 prefConfig.touchscreenTrackpad = true;
                 break;
             case 4: // Touch mouse disabled
@@ -4214,6 +4216,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             if (mode == 4) {
                 // Touch mouse disabled
                 touchContextMap[i] = null;
+            } else if (mode == 7) {
+                touchContextMap[i] = new NativeTouchContext(i, streamView);
             } else if (!prefConfig.touchscreenTrackpad) {
                 touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, mode == 5);
             } else if (mode == 3 || mode == 6) {
