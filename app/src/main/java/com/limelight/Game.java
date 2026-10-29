@@ -2201,14 +2201,35 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     public boolean handleFocusChange(boolean hasFocus) {
-        if (connected && prefConfig.smartClipboardSync) {
-            if (hasFocus) {
-                return sendClipboard(false);
-            } else {
-                return getClipboard(0);
+        // Input capture belongs to the stream window. Release every touch route
+        // immediately when that window loses focus so no stale gesture can keep
+        // sending events to the host or leak into another display.
+        if (!hasFocus) {
+            setInputGrabState(false);
+            cancelDesktopTouches();
+            for (TouchContext context : trackpadContextMap) {
+                if (context != null) context.cancelTouch();
             }
+            if (connected && conn != null) {
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_LEFT);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_RIGHT);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_MIDDLE);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_X1);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_X2);
+            }
+            lastButtonState = 0;
+            pointerSwiping = false;
+            synthClickPending = false;
+            pendingDrag = false;
+            isDragging = false;
+        } else if (connected) {
+            setInputGrabState(true);
         }
 
+        if (connected && prefConfig.smartClipboardSync) {
+            if (hasFocus) return sendClipboard(false);
+            return getClipboard(0);
+        }
         return false;
     }
 
@@ -4192,6 +4213,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         for (TouchContext context : touchContextMap) {
             if (context != null) context.cancelTouch();
         }
+        for (TouchContext context : trackpadContextMap) {
+            if (context != null) context.cancelTouch();
+        }
+        pointerSwiping = false;
+        synthClickPending = false;
+        pendingDrag = false;
+        isDragging = false;
     }
 
     private void applyMouseMode(int mode) {
