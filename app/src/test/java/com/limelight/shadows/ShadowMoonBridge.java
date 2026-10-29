@@ -33,6 +33,9 @@ public class ShadowMoonBridge {
 
     public static int getPendingAudioDuration() { return 0; }
 
+    public static int sendTouchEvent(byte eventType, int pointerId, float x, float y, float pressure,
+                                     float contactAreaMajor, float contactAreaMinor, short rotation) { return 0; }
+
     // stubbed methods used by code but not relevant to unit tests
     public static void cleanupBridge() {}
 }
