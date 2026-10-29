@@ -68,3 +68,8 @@ for other connections; the old 48-character input is no longer accepted.
 For automatic enrollment, enter the host's literal Tailscale IP address.
 Hostnames use phrase pairing to avoid trusting a destination that can change
 between the identity check and the connection.
+
+
+## Native touchscreen input (Syzygy)
+
+For a Syzygy host started with `--headless-touch`, select **Native touchscreen (multi-touch)** in the in-stream mouse-mode menu. This mode sends native touch down/move/up/cancel events with Android pointer IDs and normalized stream coordinates. It deliberately does not fall back to mouse clicks when the host reports native touch as unsupported. Use **Multi touch** for the usual compatibility fallback.
