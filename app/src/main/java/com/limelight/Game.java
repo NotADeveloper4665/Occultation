@@ -4069,6 +4069,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     (savedMouseModeString.equals(natural) ||
                             savedMouseModeString.equals(gaming) ||
                             savedMouseModeIndex == 6 ||
+                            savedMouseModeIndex == 7 ||
                             savedMouseModeString.equals(disabled))) {
                 applyMouseMode(savedMouseModeIndex);
             } else {
@@ -4101,7 +4102,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 getString(R.string.mouse_mode_track_pad_natural),
                 getString(R.string.mouse_mode_track_pad_gaming),
                 getString(R.string.mouse_mode_disabled),
-                getString(R.string.mouse_mode_remote_desktop)
+                getString(R.string.mouse_mode_remote_desktop),
+                getString(R.string.mouse_mode_native_touch)
         ));
 
         List<MouseModeOption> options = new ArrayList<>();
@@ -4200,9 +4202,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             case 2: // Trackpad (natural)
             case 3: // Trackpad (gaming)
             case 6: // Remote desktop
-            case 7: // Native touch input
-                prefConfig.enableMultiTouchScreen = mode == 7;
+                prefConfig.enableMultiTouchScreen = false;
                 prefConfig.touchscreenTrackpad = true;
+                break;
+            case 7: // Native touch input
+                prefConfig.enableMultiTouchScreen = true;
+                prefConfig.touchscreenTrackpad = false;
                 break;
             case 4: // Touch mouse disabled
                 break;
