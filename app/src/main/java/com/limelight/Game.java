@@ -148,7 +148,6 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     // Only 2 touches are supported
     private final TouchContext[] touchContextMap = new TouchContext[2];
-    private boolean nativeTouchOnlyMode;
     private int activeInputMode = InputModeRouter.MULTI_TOUCH;
     private boolean nativeTouchWarningShown;
     private final TouchContext[] trackpadContextMap = new TouchContext[2];
@@ -4197,33 +4196,32 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private void applyMouseMode(int mode) {
         activeInputMode = InputModeRouter.normalize(mode);
-        nativeTouchOnlyMode = InputModeRouter.consumesTouchWhenNativeUnsupported(activeInputMode);
         nativeTouchWarningShown = false;
         if (desktopControls != null) {
             ((android.view.ViewGroup) desktopControls.getParent()).removeView(desktopControls);
             desktopControls = null;
         }
-        switch (mode) {
-            case 0: // Multi-touch
+        switch (activeInputMode) {
+            case InputModeRouter.MULTI_TOUCH: // Multi-touch
                 prefConfig.enableMultiTouchScreen = true;
                 prefConfig.touchscreenTrackpad = false;
                 break;
-            case 1: // Normal mouse
-            case 5: // Normal mouse with swapped buttons
+            case InputModeRouter.ABSOLUTE_MOUSE: // Normal mouse
+            case InputModeRouter.ABSOLUTE_MOUSE_SWAPPED: // Normal mouse with swapped buttons
                 prefConfig.enableMultiTouchScreen = false;
                 prefConfig.touchscreenTrackpad = false;
                 break;
-            case 2: // Trackpad (natural)
-            case 3: // Trackpad (gaming)
-            case 6: // Remote desktop
+            case InputModeRouter.TRACKPAD_NATURAL: // Trackpad (natural)
+            case InputModeRouter.TRACKPAD_GAMING: // Trackpad (gaming)
+            case InputModeRouter.REMOTE_DESKTOP: // Remote desktop
                 prefConfig.enableMultiTouchScreen = false;
                 prefConfig.touchscreenTrackpad = true;
                 break;
-            case 7: // Native touch input
+            case InputModeRouter.NATIVE_TOUCH_ONLY: // Native touch input
                 prefConfig.enableMultiTouchScreen = true;
                 prefConfig.touchscreenTrackpad = false;
                 break;
-            case 4: // Touch mouse disabled
+            case InputModeRouter.DISABLED: // Touch mouse disabled
                 break;
             default:
                 break;
@@ -4240,8 +4238,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 touchContextMap[i] = null;
             } else if (!prefConfig.touchscreenTrackpad) {
                 touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, mode == 5);
-            } else if (mode == 3 || mode == 6) {
-                touchContextMap[i] = new RelativeTouchContext(conn, i, REFERENCE_HORIZ_RES, REFERENCE_VERT_RES, streamView, prefConfig, mode == 6);
+            } else if (activeInputMode == InputModeRouter.TRACKPAD_GAMING || activeInputMode == InputModeRouter.REMOTE_DESKTOP) {
+                touchContextMap[i] = new RelativeTouchContext(conn, i, REFERENCE_HORIZ_RES, REFERENCE_VERT_RES, streamView, prefConfig, activeInputMode == InputModeRouter.REMOTE_DESKTOP);
             } else {
                 touchContextMap[i] = new TrackpadContext(conn, i);
             }
