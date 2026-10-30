@@ -4377,8 +4377,16 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
 
+    /** Refresh metered state even when the user is using touch-only input. */
+    private boolean refreshMeteredNetworkState() {
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        isMetered = manager != null && manager.isActiveNetworkMetered();
+        return isMetered;
+    }
+
     /** Values displayed by the in-stream controls panel. */
     public int getConfiguredStreamBitrate() {
+        refreshMeteredNetworkState();
         return prefConfig == null ? 0 : (isMetered ? prefConfig.meteredBitrate : prefConfig.bitrate);
     }
 
@@ -4416,6 +4424,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     /** Bitrate is negotiated at stream start in the current native API; save for the next session. */
     public void saveStreamBitrateForNextSession(int bitrateKbps) {
+        refreshMeteredNetworkState();
         int safeBitrate = Math.max(500, Math.min(300000, bitrateKbps));
         com.limelight.profiles.ProfilesManager.getInstance()
                 .setOption(this, isMetered ? "seekbar_metered_bitrate_kbps" : "seekbar_bitrate_kbps", safeBitrate);
