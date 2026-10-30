@@ -305,7 +305,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
                     if (serverCmds.isEmpty()) {
                         int themeResId = game.getApplicationInfo().theme;
                         Context themedContext = new ContextThemeWrapper(dialogScreenContext, themeResId);
-                        new AlertDialog.Builder(themedContext)
+                        new MaterialAlertDialogBuilder(themedContext)
                                 .setTitle(R.string.game_dialog_title_server_cmd_empty)
                                 .setMessage(R.string.game_dialog_message_server_cmd_empty)
                                 .show();
