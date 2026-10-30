@@ -150,6 +150,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private final TouchContext[] touchContextMap = new TouchContext[2];
     private int activeInputMode = InputModeRouter.MULTI_TOUCH;
     private boolean nativeTouchWarningShown;
+    private volatile Boolean nativeTouchAccepted;
     private final TouchContext[] trackpadContextMap = new TouchContext[2];
     private PanZoomHandler panZoomHandler;
     private long threeFingerDownTime = 0;
@@ -2503,10 +2504,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             normalizedX=normalized[0];
             normalizedY=normalized[1];
         }
-        // For the containing background view, we must subtract the origin
-        // of the StreamView to get video-relative coordinates.
+        // MotionEvent coordinates are local to their receiving view. Convert
+        // background/overlay coordinates through screen space; StreamView
+        // coordinates are already local and must not have its origin subtracted.
         if (view != streamView) {
-            float[] normalized = getNormalizedCoordinates(streamView, normalizedX, normalizedY);
+            float[] normalized = getNormalizedCoordinates(view, normalizedX, normalizedY);
             normalizedX = normalized[0];
             normalizedY = normalized[1];
         }
@@ -2523,14 +2525,21 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return new float[] { normalizedX, normalizedY };
     }
 
-    private float[] getNormalizedCoordinates(View streamView, float rawX, float rawY) {
-        float scaleX = streamView.getScaleX();
-        float scaleY = streamView.getScaleY();
+    private float[] getNormalizedCoordinates(View sourceView, float rawX, float rawY) {
+        if (sourceView == streamView) {
+            return new float[] { rawX, rawY };
+        }
 
-        float normalizedX = (rawX - streamView.getX()) / scaleX;
-        float normalizedY = (rawY - streamView.getY()) / scaleY;
+        int[] sourceLocation = new int[2];
+        int[] streamLocation = new int[2];
+        sourceView.getLocationOnScreen(sourceLocation);
+        streamView.getLocationOnScreen(streamLocation);
 
-        return new float[] { normalizedX, normalizedY };
+        return com.limelight.binding.input.touch.StreamCoordinateMapper.mapToTarget(
+                rawX, rawY,
+                sourceLocation[0], sourceLocation[1],
+                streamLocation[0], streamLocation[1],
+                streamView.getScaleX(), streamView.getScaleY());
     }
 
     private static float normalizeValueInRange(float value, InputDevice.MotionRange range) {
@@ -3095,11 +3104,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                     if (prefConfig.enableMultiTouchScreen && !prefConfig.touchscreenTrackpad) {
                         boolean sentNativeTouch = trySendTouchEvent(view, event);
+                        nativeTouchAccepted = sentNativeTouch;
                         if (!sentNativeTouch && InputModeRouter.consumesTouchWhenNativeUnsupported(activeInputMode)
                                 && !nativeTouchWarningShown) {
                             nativeTouchWarningShown = true;
                             Toast.makeText(this,
-                                    "The host did not accept native touch. Try Remote desktop or Multi-touch mode.",
+                                    "Native touch was not accepted. Native touch-only does not emulate a mouse; switch to Multi-touch or Absolute mouse.",
                                     Toast.LENGTH_LONG).show();
                         }
                         if (InputModeRouter.consumeNativeTouchResult(activeInputMode, sentNativeTouch)) {
@@ -3119,11 +3129,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return false;
     }
 
-    private boolean handleTouchInput(MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen) {
-        return handleTouchInput(event, inputContextMap, isTouchScreen, event.getActionMasked(), event.getActionIndex(), event.getPointerCount());
+    private boolean handleTouchInput(View sourceView, MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen) {
+        return handleTouchInput(sourceView, event, inputContextMap, isTouchScreen, event.getActionMasked(), event.getActionIndex(), event.getPointerCount());
     }
 
-    private boolean handleTouchInput(MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen, int eventAction, int actionIndex, int pointerCount) {
+    private boolean handleTouchInput(View sourceView, MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen, int eventAction, int actionIndex, int pointerCount) {
         int actualActionIndex = event.getActionIndex();
         int actualPointerCount = event.getPointerCount();
 
@@ -4228,6 +4238,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private void applyMouseMode(int mode) {
         activeInputMode = InputModeRouter.normalize(mode);
         nativeTouchWarningShown = false;
+        nativeTouchAccepted = null;
         if (desktopControls != null) {
             ((android.view.ViewGroup) desktopControls.getParent()).removeView(desktopControls);
             desktopControls = null;
@@ -4268,7 +4279,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 // Native input is handled by trySendTouchEvent(); never fall back to mouse emulation.
                 touchContextMap[i] = null;
             } else if (!prefConfig.touchscreenTrackpad) {
-                touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, mode == 5);
+                touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, activeInputMode == InputModeRouter.ABSOLUTE_MOUSE_SWAPPED);
             } else if (activeInputMode == InputModeRouter.TRACKPAD_GAMING || activeInputMode == InputModeRouter.REMOTE_DESKTOP) {
                 touchContextMap[i] = new RelativeTouchContext(conn, i, REFERENCE_HORIZ_RES, REFERENCE_VERT_RES, streamView, prefConfig, activeInputMode == InputModeRouter.REMOTE_DESKTOP);
             } else {
@@ -4367,6 +4378,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (lastConnectionStatus == MoonBridge.CONN_STATUS_POOR) return "Poor connection";
         if (lastConnectionStatus == MoonBridge.CONN_STATUS_OKAY) return "Connection stable";
         return "Connected";
+    }
+
+    public String getNativeTouchStatus() {
+        if (activeInputMode != InputModeRouter.NATIVE_TOUCH_ONLY) return "Not in native-touch-only mode";
+        if (nativeTouchAccepted == null) return "Waiting for first touch";
+        return nativeTouchAccepted ? "Touch event accepted by streaming API" : "Streaming API rejected touch";
     }
 
     public String getEstimatedNetworkRtt() {
