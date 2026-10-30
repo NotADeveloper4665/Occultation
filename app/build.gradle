@@ -26,9 +26,7 @@ android {
 
     productFlavors {
         root {
-            // Android O has native mouse capture, so don't show the rooted
-            // version to devices running O on the Play Store.
-            maxSdk 25
+            // Root builds follow the app-wide Android 10 minimum.
 
             externalNativeBuild {
                 ndkBuild {
