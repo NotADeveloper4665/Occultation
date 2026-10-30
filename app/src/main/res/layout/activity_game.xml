@@ -69,7 +69,9 @@
             android:layout_gravity="left"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:gravity="left"
-            android:background="#80000000"
+            android:background="@drawable/stream_hud_background"
+            android:textColor="@color/streamHudText"
+            android:padding="8dp"
             android:preferKeepClear="true"
             android:visibility="gone" />
 
