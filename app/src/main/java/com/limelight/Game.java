@@ -12,11 +12,13 @@ import com.limelight.binding.PlatformBinding;
 import com.limelight.binding.audio.AndroidAudioRenderer;
 import com.limelight.binding.input.ControllerHandler;
 import com.limelight.binding.input.GameInputDevice;
+import com.limelight.binding.input.InputModeRouter;
 import com.limelight.binding.input.KeyboardTranslator;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
 import com.limelight.binding.input.touch.AbsoluteTouchContext;
 import com.limelight.binding.input.touch.RelativeTouchContext;
+import com.limelight.binding.input.touch.StreamCoordinateMapper;
 import com.limelight.binding.input.driver.UsbDriverService;
 import com.limelight.binding.input.evdev.EvdevListener;
 import com.limelight.binding.input.touch.TouchContext;
@@ -69,6 +71,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Matrix;
 import android.graphics.Outline;
 import android.graphics.Point;
 import android.graphics.PointF;
@@ -147,7 +150,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     // Only 2 touches are supported
     private final TouchContext[] touchContextMap = new TouchContext[2];
-    private boolean nativeTouchOnlyMode;
+    private int activeInputMode = InputModeRouter.MULTI_TOUCH;
+    private boolean nativeTouchWarningShown;
+    private volatile Boolean nativeTouchAccepted;
     private final TouchContext[] trackpadContextMap = new TouchContext[2];
     private PanZoomHandler panZoomHandler;
     private long threeFingerDownTime = 0;
@@ -189,6 +194,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private boolean displayedFailureDialog = false;
     private boolean connecting = false;
     public boolean connected = false;
+    private volatile int lastConnectionStatus = -1;
+    private boolean isMetered;
     private boolean autoEnterPip = false;
     private boolean surfaceCreated = false;
     private boolean attemptedConnection = false;
@@ -525,7 +532,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Warn the user if they're on a metered connection
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        boolean isMetered = connMgr.isActiveNetworkMetered();
+        isMetered = connMgr.isActiveNetworkMetered();
         if (isMetered) {
             displayTransientMessage(getResources().getString(R.string.conn_metered));
         }
@@ -2199,14 +2206,35 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     public boolean handleFocusChange(boolean hasFocus) {
-        if (connected && prefConfig.smartClipboardSync) {
-            if (hasFocus) {
-                return sendClipboard(false);
-            } else {
-                return getClipboard(0);
+        // Input capture belongs to the stream window. Release every touch route
+        // immediately when that window loses focus so no stale gesture can keep
+        // sending events to the host or leak into another display.
+        if (!hasFocus) {
+            setInputGrabState(false);
+            cancelDesktopTouches();
+            for (TouchContext context : trackpadContextMap) {
+                if (context != null) context.cancelTouch();
             }
+            if (connected && conn != null) {
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_LEFT);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_RIGHT);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_MIDDLE);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_X1);
+                conn.sendMouseButtonUp(MouseButtonPacket.BUTTON_X2);
+            }
+            lastButtonState = 0;
+            pointerSwiping = false;
+            synthClickPending = false;
+            pendingDrag = false;
+            isDragging = false;
+        } else if (connected) {
+            setInputGrabState(true);
         }
 
+        if (connected && prefConfig.smartClipboardSync) {
+            if (hasFocus) return sendClipboard(false);
+            return getClipboard(0);
+        }
         return false;
     }
 
@@ -2478,10 +2506,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             normalizedX=normalized[0];
             normalizedY=normalized[1];
         }
-        // For the containing background view, we must subtract the origin
-        // of the StreamView to get video-relative coordinates.
+        // MotionEvent coordinates are local to their receiving view. Convert
+        // background/overlay coordinates through screen space; StreamView
+        // coordinates are already local and must not have its origin subtracted.
         if (view != streamView) {
-            float[] normalized = getNormalizedCoordinates(streamView, normalizedX, normalizedY);
+            float[] normalized = getNormalizedCoordinates(view, normalizedX, normalizedY);
             normalizedX = normalized[0];
             normalizedY = normalized[1];
         }
@@ -2498,14 +2527,33 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return new float[] { normalizedX, normalizedY };
     }
 
-    private float[] getNormalizedCoordinates(View streamView, float rawX, float rawY) {
-        float scaleX = streamView.getScaleX();
-        float scaleY = streamView.getScaleY();
+    private float[] getNormalizedCoordinates(View sourceView, float rawX, float rawY) {
+        if (sourceView == streamView) {
+            return new float[] { rawX, rawY };
+        }
 
-        float normalizedX = (rawX - streamView.getX()) / scaleX;
-        float normalizedY = (rawY - streamView.getY()) / scaleY;
+        float[] point = new float[] { rawX, rawY };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Full ancestor/property transforms are available on Android 10+.
+            Matrix sourceToTarget = new Matrix();
+            sourceView.transformMatrixToGlobal(sourceToTarget);
+            streamView.transformMatrixToLocal(sourceToTarget);
+            sourceToTarget.mapPoints(point);
+            return point;
+        }
 
-        return new float[] { normalizedX, normalizedY };
+        // Android 5–9 fallback: use screen-space view origins and the stream
+        // surface scale. This avoids the API-29-only transform helpers while
+        // keeping the legacy minimum SDK fully supported.
+        int[] sourceLocation = new int[2];
+        int[] targetLocation = new int[2];
+        sourceView.getLocationOnScreen(sourceLocation);
+        streamView.getLocationOnScreen(targetLocation);
+        return StreamCoordinateMapper.mapToTarget(
+                rawX, rawY,
+                sourceLocation[0], sourceLocation[1],
+                targetLocation[0], targetLocation[1],
+                streamView.getScaleX(), streamView.getScaleY());
     }
 
     private static float normalizeValueInRange(float value, InputDevice.MotionRange range) {
@@ -2843,13 +2891,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && event.getClassification() == MotionEvent.CLASSIFICATION_TWO_FINGER_SWIPE) {
                             if (!pointerSwiping) {
                                 pointerSwiping = true;
-                                handleTouchInput(event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_DOWN, 1, 2);
+                                handleTouchInput(view, event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_DOWN, 1, 2);
                             }
-                            return handleTouchInput(event, trackpadContextMap, false, MotionEvent.ACTION_MOVE, 1, 2);
+                            return handleTouchInput(view, event, trackpadContextMap, false, MotionEvent.ACTION_MOVE, 1, 2);
                         } else if (pointerSwiping && eventAction == MotionEvent.ACTION_UP) {
                             pointerSwiping = false;
                             synthClickPending = false;
-                            handleTouchInput(event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_UP, 1, 2);
+                            handleTouchInput(view, event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_UP, 1, 2);
                             return true;
                         }
 
@@ -3031,7 +3079,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // This case is for fingers
             else {
                 if (eventSource == InputDevice.SOURCE_TOUCHPAD) {
-                    return handleTouchInput(event, trackpadContextMap, false);
+                    return handleTouchInput(view, event, trackpadContextMap, false);
                 } else {
                     if (virtualController != null &&
                             (virtualController.getControllerMode() == VirtualController.ControllerMode.MoveButtons ||
@@ -3070,14 +3118,20 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                     if (prefConfig.enableMultiTouchScreen && !prefConfig.touchscreenTrackpad) {
                         boolean sentNativeTouch = trySendTouchEvent(view, event);
-                        if (sentNativeTouch || nativeTouchOnlyMode) {
-                            // Native-touch-only mode consumes the event even when the host
-                            // reports unsupported, preventing accidental mouse emulation.
+                        nativeTouchAccepted = sentNativeTouch;
+                        if (!sentNativeTouch && InputModeRouter.consumesTouchWhenNativeUnsupported(activeInputMode)
+                                && !nativeTouchWarningShown) {
+                            nativeTouchWarningShown = true;
+                            Toast.makeText(this,
+                                    "Native touch was not accepted. Native touch-only does not emulate a mouse; switch to Multi-touch or Absolute mouse.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                        if (InputModeRouter.consumeNativeTouchResult(activeInputMode, sentNativeTouch)) {
                             return true;
                         }
                     }
 
-                    return handleTouchInput(event, touchContextMap, true);
+                    return handleTouchInput(view, event, touchContextMap, true);
                 }
             }
 
@@ -3089,11 +3143,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return false;
     }
 
-    private boolean handleTouchInput(MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen) {
-        return handleTouchInput(event, inputContextMap, isTouchScreen, event.getActionMasked(), event.getActionIndex(), event.getPointerCount());
+    private boolean handleTouchInput(View sourceView, MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen) {
+        return handleTouchInput(sourceView, event, inputContextMap, isTouchScreen, event.getActionMasked(), event.getActionIndex(), event.getPointerCount());
     }
 
-    private boolean handleTouchInput(MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen, int eventAction, int actionIndex, int pointerCount) {
+    private boolean handleTouchInput(View sourceView, MotionEvent event, TouchContext[] inputContextMap, boolean isTouchScreen, int eventAction, int actionIndex, int pointerCount) {
         int actualActionIndex = event.getActionIndex();
         int actualPointerCount = event.getPointerCount();
 
@@ -3104,7 +3158,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Handle view scaling
         if (isTouchScreen) {
-            float[] normalizedCoords = getNormalizedCoordinates(streamView, eventX, eventY);
+            float[] normalizedCoords = getNormalizedCoordinates(sourceView, eventX, eventY);
             eventX = (int)normalizedCoords[0];
             eventY = (int)normalizedCoords[1];
         }
@@ -3161,7 +3215,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     int pointer1X = (int)event.getX(1);
                     int pointer1Y = (int)event.getY(1);
                     if (isTouchScreen) {
-                        float[] normalizedCoords = getNormalizedCoordinates(streamView, pointer1X, pointer1Y);
+                        float[] normalizedCoords = getNormalizedCoordinates(sourceView, pointer1X, pointer1Y);
                         pointer1X = (int)normalizedCoords[0];
                         pointer1Y = (int)normalizedCoords[1];
                     }
@@ -3184,7 +3238,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                             int historicalX = (int)event.getHistoricalX(aActionIndex, i);
                             int historicalY = (int)event.getHistoricalY(aActionIndex, i);
                             if (isTouchScreen) {
-                                float[] normalizedCoords = getNormalizedCoordinates(streamView, historicalX, historicalY);
+                                float[] normalizedCoords = getNormalizedCoordinates(sourceView, historicalX, historicalY);
                                 historicalX = (int)normalizedCoords[0];
                                 historicalY = (int)normalizedCoords[1];
                             }
@@ -3204,7 +3258,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         int currentX = (int)event.getX(aActionIndex);
                         int currentY = (int)event.getY(aActionIndex);
                         if (isTouchScreen) {
-                            float[] normalizedCoords = getNormalizedCoordinates(streamView, currentX, currentY);
+                            float[] normalizedCoords = getNormalizedCoordinates(sourceView, currentX, currentY);
                             currentX = (int)normalizedCoords[0];
                             currentY = (int)normalizedCoords[1];
                         }
@@ -3621,6 +3675,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                lastConnectionStatus = connectionStatus;
                 if (prefConfig.disableWarnings) {
                     return;
                 }
@@ -4163,6 +4218,23 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private com.limelight.ui.DesktopControlsView desktopControls;
+    private boolean firstVideoFrameRendered;
+
+    private void updateDesktopControlsVisibility() {
+        if (desktopControls == null) return;
+        boolean show = com.limelight.ui.DesktopControlsVisibility.shouldShow(
+                InputModeRouter.usesDesktopControls(activeInputMode), firstVideoFrameRendered);
+        desktopControls.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    public void onVideoFrameRendered() {
+        runOnUiThread(() -> {
+            if (isFinishing() || firstVideoFrameRendered) return;
+            firstVideoFrameRendered = true;
+            updateDesktopControlsVisibility();
+        });
+    }
 
     private byte overlayModifiers;
     private final java.util.Set<Integer> overlayKeys = new java.util.HashSet<>();
@@ -4185,35 +4257,44 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         for (TouchContext context : touchContextMap) {
             if (context != null) context.cancelTouch();
         }
+        for (TouchContext context : trackpadContextMap) {
+            if (context != null) context.cancelTouch();
+        }
+        pointerSwiping = false;
+        synthClickPending = false;
+        pendingDrag = false;
+        isDragging = false;
     }
 
     private void applyMouseMode(int mode) {
-        nativeTouchOnlyMode = mode == 7;
+        activeInputMode = InputModeRouter.normalize(mode);
+        nativeTouchWarningShown = false;
+        nativeTouchAccepted = null;
         if (desktopControls != null) {
             ((android.view.ViewGroup) desktopControls.getParent()).removeView(desktopControls);
             desktopControls = null;
         }
-        switch (mode) {
-            case 0: // Multi-touch
+        switch (activeInputMode) {
+            case InputModeRouter.MULTI_TOUCH: // Multi-touch
                 prefConfig.enableMultiTouchScreen = true;
                 prefConfig.touchscreenTrackpad = false;
                 break;
-            case 1: // Normal mouse
-            case 5: // Normal mouse with swapped buttons
+            case InputModeRouter.ABSOLUTE_MOUSE: // Normal mouse
+            case InputModeRouter.ABSOLUTE_MOUSE_SWAPPED: // Normal mouse with swapped buttons
                 prefConfig.enableMultiTouchScreen = false;
                 prefConfig.touchscreenTrackpad = false;
                 break;
-            case 2: // Trackpad (natural)
-            case 3: // Trackpad (gaming)
-            case 6: // Remote desktop
+            case InputModeRouter.TRACKPAD_NATURAL: // Trackpad (natural)
+            case InputModeRouter.TRACKPAD_GAMING: // Trackpad (gaming)
+            case InputModeRouter.REMOTE_DESKTOP: // Remote desktop
                 prefConfig.enableMultiTouchScreen = false;
                 prefConfig.touchscreenTrackpad = true;
                 break;
-            case 7: // Native touch input
+            case InputModeRouter.NATIVE_TOUCH_ONLY: // Native touch input
                 prefConfig.enableMultiTouchScreen = true;
                 prefConfig.touchscreenTrackpad = false;
                 break;
-            case 4: // Touch mouse disabled
+            case InputModeRouter.DISABLED: // Touch mouse disabled
                 break;
             default:
                 break;
@@ -4222,22 +4303,22 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         //Initialize touch contexts
         for (int i = 0; i < touchContextMap.length; i++) {
             if (touchContextMap[i] != null) touchContextMap[i].cancelTouch();
-            if (mode == 4) {
+            if (InputModeRouter.isDisabled(activeInputMode)) {
                 // Touch mouse disabled
                 touchContextMap[i] = null;
-            } else if (mode == 7) {
+            } else if (InputModeRouter.consumesTouchWhenNativeUnsupported(activeInputMode)) {
                 // Native input is handled by trySendTouchEvent(); never fall back to mouse emulation.
                 touchContextMap[i] = null;
             } else if (!prefConfig.touchscreenTrackpad) {
-                touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, mode == 5);
-            } else if (mode == 3 || mode == 6) {
-                touchContextMap[i] = new RelativeTouchContext(conn, i, REFERENCE_HORIZ_RES, REFERENCE_VERT_RES, streamView, prefConfig, mode == 6);
+                touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView, activeInputMode == InputModeRouter.ABSOLUTE_MOUSE_SWAPPED);
+            } else if (activeInputMode == InputModeRouter.TRACKPAD_GAMING || activeInputMode == InputModeRouter.REMOTE_DESKTOP) {
+                touchContextMap[i] = new RelativeTouchContext(conn, i, REFERENCE_HORIZ_RES, REFERENCE_VERT_RES, streamView, prefConfig, activeInputMode == InputModeRouter.REMOTE_DESKTOP);
             } else {
                 touchContextMap[i] = new TrackpadContext(conn, i);
             }
         }
 
-        if (mode == 6) {
+        if (InputModeRouter.usesDesktopControls(activeInputMode)) {
             desktopControls = new com.limelight.ui.DesktopControlsView(this,
                     this::toggleKeyboard,
                     () -> sendKeys(new short[]{(short) 0x805B}),
@@ -4256,6 +4337,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             desktopControls.setConfiguration(new com.limelight.overlay.OverlayStore(this).forGame(appName), this::sendOverlayKey);
             ((android.view.ViewGroup) streamView.getParent()).addView(desktopControls,
                     new android.widget.FrameLayout.LayoutParams(-1, -1));
+            // Keep the controls non-interactive until MediaCodec confirms a frame reached the surface.
+            updateDesktopControlsVisibility();
         }
 
         // Always exit zoom mode if mouse mode has changed
@@ -4310,6 +4393,60 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+
+    /** Refresh metered state even when the user is using touch-only input. */
+    private boolean refreshMeteredNetworkState() {
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        isMetered = manager != null && manager.isActiveNetworkMetered();
+        return isMetered;
+    }
+
+    /** Values displayed by the in-stream controls panel. */
+    public int getConfiguredStreamBitrate() {
+        refreshMeteredNetworkState();
+        return prefConfig == null ? 0 : (isMetered ? prefConfig.meteredBitrate : prefConfig.bitrate);
+    }
+
+    public int getConfiguredStreamWidth() { return displayWidth; }
+    public int getConfiguredStreamHeight() { return displayHeight; }
+    public int getConfiguredStreamFps() { return prefConfig == null ? 0 : Math.round(prefConfig.fps); }
+    public boolean isWanOptimizationEnabled() { return prefConfig != null && prefConfig.wanOptimization; }
+
+    public String getStreamConnectionStatus() {
+        if (!connected) return connecting ? "Connecting" : "Disconnected";
+        if (lastConnectionStatus == MoonBridge.CONN_STATUS_POOR) return "Poor connection";
+        if (lastConnectionStatus == MoonBridge.CONN_STATUS_OKAY) return "Connection stable";
+        return "Connected";
+    }
+
+    public String getNativeTouchStatus() {
+        if (activeInputMode != InputModeRouter.NATIVE_TOUCH_ONLY) return "Not in native-touch-only mode";
+        if (nativeTouchAccepted == null) return "Waiting for first touch";
+        return nativeTouchAccepted ? "Touch event accepted by streaming API" : "Streaming API rejected touch";
+    }
+
+    public String getEstimatedNetworkRtt() {
+        if (!connected) return "Unavailable";
+        try {
+            long info;
+            synchronized (MoonBridge.class) {
+                info = MoonBridge.getEstimatedRttInfo();
+            }
+            long rtt = info >>> 32;
+            return rtt == 0 ? "Warming up" : rtt + " ms";
+        } catch (RuntimeException e) {
+            return "Unavailable";
+        }
+    }
+
+    /** Bitrate is negotiated at stream start in the current native API; save for the next session. */
+    public void saveStreamBitrateForNextSession(int bitrateKbps) {
+        refreshMeteredNetworkState();
+        int safeBitrate = Math.max(500, Math.min(300000, bitrateKbps));
+        com.limelight.profiles.ProfilesManager.getInstance()
+                .setOption(this, isMetered ? "seekbar_metered_bitrate_kbps" : "seekbar_bitrate_kbps", safeBitrate);
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.limelight.preferences;
 
+import com.limelight.binding.input.InputModeRouter;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -902,23 +904,24 @@ private static int getFramePacingValue(Context context) {
         // Read mouse mode and set touch settings accordingly
         String mouseMode = prefs.getString("mouse_mode_list", "0");
         int mouseModeInt = Integer.parseInt(mouseMode);
-        switch (mouseModeInt) {
-            case 0: // Multi-touch
+        switch (InputModeRouter.normalize(mouseModeInt)) {
+            case InputModeRouter.MULTI_TOUCH:
+            case InputModeRouter.NATIVE_TOUCH_ONLY: // Native touch has no mouse fallback
                 config.enableMultiTouchScreen = true;
                 config.touchscreenTrackpad = false;
                 break;
-            case 1: // Normal mouse
-            case 5: // Normal mouse with swapped buttons
+            case InputModeRouter.ABSOLUTE_MOUSE:
+            case InputModeRouter.ABSOLUTE_MOUSE_SWAPPED:
                 config.enableMultiTouchScreen = false;
                 config.touchscreenTrackpad = false;
                 break;
-            case 2: // Trackpad (natural)
-            case 3: // Trackpad (gaming)
-            case 6: // Remote desktop
+            case InputModeRouter.TRACKPAD_NATURAL:
+            case InputModeRouter.TRACKPAD_GAMING:
+            case InputModeRouter.REMOTE_DESKTOP:
                 config.enableMultiTouchScreen = false;
                 config.touchscreenTrackpad = true;
                 break;
-            case 4: // Touch mouse disabled
+            case InputModeRouter.DISABLED:
                 config.enableMultiTouchScreen = false;
                 config.touchscreenTrackpad = false;
                 break;

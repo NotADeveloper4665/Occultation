@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jcodec.codecs.h264.H264Utils;
 import org.jcodec.codecs.h264.io.model.SeqParameterSet;
@@ -206,6 +207,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private String glRenderer;
     private boolean foreground = true;
     private PerfOverlayListener perfListener;
+    private final AtomicBoolean firstVideoFrameNotified = new AtomicBoolean(false);
 
     private static final int CR_MAX_TRIES = 10;
     private static final int CR_RECOVERY_TYPE_NONE = 0;
@@ -944,13 +946,19 @@ MediaFormat mediaFormat = createBaseMediaFormat(mimeType);
             }
         }
 
-        if (USE_FRAME_RENDER_TIME && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // This callback confirms that a decoded frame was actually rendered to the Surface.
+            // It is independent of the optional frame-timing statistics feature.
             videoDecoder.setOnFrameRenderedListener(new MediaCodec.OnFrameRenderedListener() {
                 @Override
                 public void onFrameRendered(MediaCodec mediaCodec, long presentationTimeUs, long renderTimeNanos) {
-                    long delta = (renderTimeNanos / 1000000L) - (presentationTimeUs / 1000);
-                    if (delta >= 0 && delta < 1000) {
-                        if (USE_FRAME_RENDER_TIME) {
+                    if (firstVideoFrameNotified.compareAndSet(false, true) && perfListener != null) {
+                        perfListener.onVideoFrameRendered();
+                    }
+
+                    if (USE_FRAME_RENDER_TIME) {
+                        long delta = (renderTimeNanos / 1000000L) - (presentationTimeUs / 1000);
+                        if (delta >= 0 && delta < 1000) {
                             activeWindowVideoStats.totalTimeMs += delta;
                         }
                     }

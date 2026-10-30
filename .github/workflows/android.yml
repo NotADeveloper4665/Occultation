@@ -75,7 +75,7 @@ jobs:
       - name: Upload development APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Occultation-0.1.8-dev-APKs
+          name: Occultation-2.0-rc1-APKs
           path: app/build/outputs/apk/nonRoot_game/debug/*.apk
           if-no-files-found: error
       - name: Publish downloadable development APKs
@@ -99,7 +99,7 @@ jobs:
               shutil.copy2(root / element['outputFile'], Path('release-apks') / f'Occultation-{abi}.apk')
           shutil.copy2(root / 'development-signer.sha256', Path('release-apks/development-signer.sha256'))
           Path('release-apks/dev-build.json').write_text(json.dumps({
-              'version': '0.1.8-dev', 'commit': os.environ['GITHUB_SHA'],
+              'version': '1.9-dev', 'commit': os.environ['GITHUB_SHA'],
               'run': os.environ['GITHUB_RUN_ID'],
               'certificate_sha256': (root / 'development-signer.sha256').read_text().strip()}, indent=2) + '\n')
           if not Path('release-apks/Occultation-universal.apk').is_file():
@@ -107,7 +107,7 @@ jobs:
           PY
           (cd release-apks && sha256sum *.apk dev-build.json development-signer.sha256 > SHA256SUMS)
           cat > release-notes.md <<EOF
-          Occultation 0.1.8 development build
+          Occultation 1.9 development build
 
           - Visible auto-sized action text on overlay buttons, including built-in actions; correct measurement at circular control bounds.
           - Copyable neural hardware report under Video settings. This is diagnostics, not an active neural upscaler or a claim of TPU execution.
@@ -128,16 +128,20 @@ jobs:
           - Pair using the six-word phrase printed by Syzygy; no host PIN or Web UI required.
           - Pairing phrases are not saved. Reconnection uses the authenticated paired certificate.
           - Profile-aware direct Desktop connection and granular client input permissions.
+          - Unified touchscreen routing with explicit Native touch-only behavior and no silent mouse fallback.
+          - Release held keys, mouse buttons, touch and trackpad gestures on focus loss; restore input capture on focus return.
+          - Corrected touch coordinate mapping for stream surfaces, overlays and scaled views, with Android 10+ compatibility.
+          - Redesigned in-stream controls for Video, Network, Performance and Controls, including next-session bitrate selection and live connection details.
 
-          Download **Occultation-universal.apk** for any supported Android device or Waydroid, or choose the APK matching your CPU. Android 5.0 or newer is required. These are debug-signed development APKs, not production releases.
+          Download **Occultation-universal.apk** for any supported Android device or Waydroid, or choose the APK matching your CPU. Android 10 or newer is required. These are debug-signed development APKs, not production releases.
 
           Source: $GITHUB_SHA
           Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           EOF
           if gh release view dev --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 0.1.8 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release edit dev --repo "$GITHUB_REPOSITORY" --title 'Occultation 1.9 Development' --notes-file release-notes.md --prerelease --latest=false
           else
-            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 0.1.8 Development' --notes-file release-notes.md --prerelease --latest=false
+            gh release create dev --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Occultation 1.9 Development' --notes-file release-notes.md --prerelease --latest=false
           fi
           gh release upload dev release-apks/* --repo "$GITHUB_REPOSITORY" --clobber
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/dev" -f sha="$GITHUB_SHA" -F force=true

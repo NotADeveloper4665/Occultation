@@ -739,7 +739,7 @@
     <string name="syzygy_pair_action">Pair with Syzygy phrase</string>
     <string name="syzygy_existing_key_help">Paste the six-word phrase printed by Syzygy with -psk. No PIN or host Web UI is required. The key is used once and is not saved; future connections use this device’s paired certificate.</string>
     <string name="mouse_mode_remote_desktop">Remote desktop</string>
-    <string name="mouse_mode_native_touch">Native touchscreen (multi-touch)</string>
+    <string name="mouse_mode_native_touch">Native touch only (no mouse fallback)</string>
     <string name="desktop_controls_toggle">Show or hide desktop controls</string>
     <string name="desktop_keyboard">Show keyboard</string>
     <string name="desktop_home">Windows / Super key</string>

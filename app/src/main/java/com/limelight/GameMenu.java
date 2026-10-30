@@ -12,6 +12,14 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.SeekBar;
+import android.widget.TextView;
+import android.graphics.Typeface;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.util.TypedValue;
 import android.widget.Toast;
 
 import com.limelight.binding.input.GameInputDevice;
@@ -285,53 +293,188 @@ public class GameMenu implements Game.GameMenuCallbacks {
         showMenuDialog(getString(R.string.game_menu_server_cmd), options.toArray(new MenuOption[options.size()]));
     }
 
-    public void showMenu(GameInputDevice device) {
-        List<MenuOption> options = new ArrayList<>();
 
-        options.add(new MenuOption(getString(R.string.game_menu_disconnect), game::disconnect));
+    private int dp(float value) { return Math.round(value * game.getResources().getDisplayMetrics().density); }
 
-        options.add(new MenuOption(getString(R.string.game_menu_quit_session), game::quit));
-
-        options.add(new MenuOption(getString(R.string.game_menu_upload_clipboard), true,
-                () -> game.sendClipboard(true)));
-
-        options.add(new MenuOption(getString(R.string.game_menu_fetch_clipboard), true,
-                () -> game.getClipboard(0)));
-
-        options.add(new MenuOption(getString(R.string.game_menu_server_cmd), true,
-                () -> {
-                    ArrayList<String> serverCmds = game.getServerCmds();
-                    if (serverCmds.isEmpty()) {
-                        int themeResId = game.getApplicationInfo().theme;
-                        Context themedContext = new ContextThemeWrapper(dialogScreenContext, themeResId);
-                        new AlertDialog.Builder(themedContext)
-                                .setTitle(R.string.game_dialog_title_server_cmd_empty)
-                                .setMessage(R.string.game_dialog_message_server_cmd_empty)
-                                .show();
-                    } else {
-                        hideMenu();
-                        this.showServerCmd(serverCmds);
-                    }
-                }));
-
-        options.add(new MenuOption(getString(R.string.game_menu_toggle_keyboard), true,
-                game::toggleKeyboard));
-
-        options.add(new MenuOption(getString(game.isZoomModeEnabled() ? R.string.game_menu_disable_zoom_mode : R.string.game_menu_enable_zoom_mode), true,
-                game::toggleZoomMode));
-
-        if (dialogScreenContext == game) {
-            options.add(new MenuOption(getString(R.string.game_menu_rotate_screen), true,
-                    game::rotateScreen));
-        }
-
-        options.add(new MenuOption(getString(R.string.game_menu_advanced), true,
-                () -> showAdvancedMenu(device)));
-
-        options.add(new MenuOption(getString(R.string.game_menu_cancel), null));
-
-        showMenuDialog(getString(R.string.quick_menu_title), options.toArray(new MenuOption[options.size()]));
+    private TextView panelText(Context context, String value, float size, boolean bold) {
+        TextView text = new TextView(context);
+        text.setText(value);
+        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
+        text.setTextColor(Color.WHITE);
+        if (bold) text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        return text;
     }
+
+    private LinearLayout panelCard(Context context, LinearLayout parent, String title) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(13), dp(16), dp(13));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.rgb(35, 34, 49));
+        bg.setCornerRadius(dp(16));
+        card.setBackground(bg);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(10);
+        parent.addView(card, params);
+        TextView heading = panelText(context, title.toUpperCase(java.util.Locale.ROOT), 11, true);
+        heading.setTextColor(Color.rgb(177, 157, 255));
+        card.addView(heading);
+        return card;
+    }
+
+    private void addPanelLine(LinearLayout card, String label, String value) {
+        LinearLayout line = new LinearLayout(card.getContext());
+        line.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        line.setPadding(0, dp(8), 0, dp(2));
+        TextView left = panelText(card.getContext(), label, 14, false);
+        left.setTextColor(Color.rgb(205, 204, 216));
+        TextView right = panelText(card.getContext(), value, 14, true);
+        right.setGravity(android.view.Gravity.RIGHT);
+        line.addView(left, new LinearLayout.LayoutParams(0, -2, 1));
+        line.addView(right, new LinearLayout.LayoutParams(-2, -2));
+        card.addView(line);
+    }
+
+    private TextView panelButton(Context context, String label, Runnable action, int backgroundColor) {
+        TextView button = panelText(context, label, 14, true);
+        button.setGravity(android.view.Gravity.CENTER);
+        button.setTextColor(Color.WHITE);
+        button.setMinHeight(dp(44));
+        button.setPadding(dp(12), dp(10), dp(12), dp(10));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(backgroundColor);
+        background.setCornerRadius(dp(12));
+        button.setBackground(background);
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setOnClickListener(v -> { hideMenu(); action.run(); });
+        return button;
+    }
+
+    private void addPanelButton(LinearLayout parent, String label, Runnable action, int color) {
+        TextView button = panelButton(parent.getContext(), label, action, color);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(44));
+        params.bottomMargin = dp(7);
+        parent.addView(button, params);
+    }
+
+    private void showMoreMenu(GameInputDevice device) {
+        List<MenuOption> options = new ArrayList<>();
+        options.add(new MenuOption(getString(R.string.game_menu_upload_clipboard), true, () -> game.sendClipboard(true)));
+        options.add(new MenuOption(getString(R.string.game_menu_fetch_clipboard), true, () -> game.getClipboard(0)));
+        options.add(new MenuOption(getString(R.string.game_menu_server_cmd), true, () -> {
+            ArrayList<String> cmds = game.getServerCmds();
+            hideMenu();
+            if (cmds.isEmpty()) {
+                new AlertDialog.Builder(new ContextThemeWrapper(dialogScreenContext, game.getApplicationInfo().theme))
+                        .setTitle(R.string.game_dialog_title_server_cmd_empty)
+                        .setMessage(R.string.game_dialog_message_server_cmd_empty).show();
+            } else showServerCmd(cmds);
+        }));
+        options.add(new MenuOption(getString(R.string.game_menu_toggle_keyboard), true, game::toggleKeyboard));
+        options.add(new MenuOption(getString(game.isZoomModeEnabled() ? R.string.game_menu_disable_zoom_mode :
+                R.string.game_menu_enable_zoom_mode), true, game::toggleZoomMode));
+        if (dialogScreenContext == game) options.add(new MenuOption(getString(R.string.game_menu_rotate_screen), true, game::rotateScreen));
+        options.add(new MenuOption(getString(R.string.game_menu_advanced), true, () -> showAdvancedMenu(device)));
+        options.add(new MenuOption(getString(R.string.game_menu_send_keys), () -> { hideMenu(); showSpecialKeysMenu(); }));
+        options.add(new MenuOption(getString(R.string.game_menu_cancel), null));
+        showMenuDialog(getString(R.string.quick_menu_title), options.toArray(new MenuOption[0]));
+    }
+
+    private void showStreamControlPanel(GameInputDevice device) {
+        Context context = new ContextThemeWrapper(dialogScreenContext, game.getApplicationInfo().theme);
+        int currentBitrate = Math.max(500, game.getConfiguredStreamBitrate());
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(18), dp(12), dp(18), dp(12));
+        content.setBackgroundColor(Color.rgb(20, 19, 29));
+
+        TextView eyebrow = panelText(context, "OCCULTATION", 11, true);
+        eyebrow.setTextColor(Color.rgb(177, 157, 255));
+        content.addView(eyebrow);
+        TextView title = panelText(context, "Stream controls", 24, true);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
+        titleParams.bottomMargin = dp(14);
+        content.addView(title, titleParams);
+
+        LinearLayout video = panelCard(context, content, "Video");
+        addPanelLine(video, "Resolution", game.getConfiguredStreamWidth() + " × " + game.getConfiguredStreamHeight());
+        addPanelLine(video, "Target frame rate", game.getConfiguredStreamFps() + " FPS");
+        TextView bitrateValue = panelText(context, "Bitrate · " + String.format(java.util.Locale.ROOT, "%.1f Mbps", currentBitrate / 1000.0), 15, true);
+        bitrateValue.setPadding(0, dp(12), 0, dp(2));
+        video.addView(bitrateValue);
+        SeekBar bitrate = new SeekBar(context);
+        bitrate.setMax(299500);
+        bitrate.setProgress(currentBitrate - 500);
+        video.addView(bitrate, new LinearLayout.LayoutParams(-1, -2));
+        TextView hint = panelText(context, "Saved for your next stream. The current native streaming API does not support live bitrate changes.", 11, false);
+        hint.setTextColor(Color.LTGRAY);
+        video.addView(hint);
+        bitrate.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                bitrateValue.setText("Bitrate · " + String.format(java.util.Locale.ROOT, "%.1f Mbps", (progress + 500) / 1000.0));
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {
+                game.saveStreamBitrateForNextSession(bar.getProgress() + 500);
+                Toast.makeText(game, "Bitrate saved for next stream", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        LinearLayout network = panelCard(context, content, "Network");
+        addPanelLine(network, "Connection", game.getStreamConnectionStatus());
+        addPanelLine(network, "Estimated RTT", game.getEstimatedNetworkRtt());
+        addPanelLine(network, "WAN optimization", game.isWanOptimizationEnabled() ? "Enabled" : "Disabled");
+
+        LinearLayout performance = panelCard(context, content, "Performance");
+        addPanelLine(performance, "Performance HUD", PreferenceConfiguration.readPreferences(game).enablePerfOverlay ? "Enabled" : "Disabled");
+        TextView perfHint = panelText(context, "Decoder, rendering and frame statistics are available through the performance HUD.", 12, false);
+        perfHint.setTextColor(Color.LTGRAY);
+        perfHint.setPadding(0, dp(7), 0, 0);
+        performance.addView(perfHint);
+
+        LinearLayout controls = panelCard(context, content, "Controls");
+        addPanelLine(controls, "Native touch", game.getNativeTouchStatus());
+        addPanelButton(controls, "Input mode", () -> game.selectMouseMode(dialogScreenContext), Color.rgb(76, 62, 116));
+        addPanelButton(controls, "Toggle keyboard", game::toggleKeyboard, Color.rgb(48, 47, 64));
+        addPanelButton(controls, "Toggle performance HUD", game::toggleHUD, Color.rgb(48, 47, 64));
+        addPanelButton(controls, "More controls", () -> showMoreMenu(device), Color.rgb(48, 47, 64));
+
+        LinearLayout sessionActions = new LinearLayout(context);
+        sessionActions.setOrientation(LinearLayout.HORIZONTAL);
+        TextView disconnect = panelButton(context, "Disconnect", game::disconnect, Color.rgb(91, 54, 58));
+        TextView quit = panelButton(context, "Quit host app", game::quit, Color.rgb(119, 43, 58));
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, dp(46), 1);
+        actionParams.rightMargin = dp(6);
+        sessionActions.addView(disconnect, actionParams);
+        LinearLayout.LayoutParams quitParams = new LinearLayout.LayoutParams(0, dp(46), 1);
+        quitParams.leftMargin = dp(6);
+        sessionActions.addView(quit, quitParams);
+        controls.addView(sessionActions);
+
+        TextView resume = panelButton(context, "Return to stream", this::hideMenu, Color.rgb(105, 82, 166));
+        LinearLayout.LayoutParams resumeParams = new LinearLayout.LayoutParams(-1, dp(48));
+        resumeParams.topMargin = dp(4);
+        content.addView(resume, resumeParams);
+
+        ScrollView scroll = new ScrollView(context);
+        scroll.setFillViewport(true);
+        scroll.addView(content);
+        AlertDialog dialog = new AlertDialog.Builder(context).create();
+        dialog.setView(scroll, 0, 0, 0, 0);
+        dialog.setOnCancelListener(d -> hideMenu());
+        if (currentDialog != null) currentDialog.dismiss();
+        currentDialog = dialog;
+        dialog.show();
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(Math.min(game.getResources().getDisplayMetrics().widthPixels - dp(24), dp(520)),
+                    Math.min(game.getResources().getDisplayMetrics().heightPixels - dp(48), dp(720)));
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+        }
+    }
+
+    public void showMenu(GameInputDevice device) { showStreamControlPanel(device); }
 
     @Override
     public void hideMenu() {

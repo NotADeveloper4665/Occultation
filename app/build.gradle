@@ -8,11 +8,11 @@ android {
     namespace 'com.limelight'
 
     defaultConfig {
-        minSdk 21
-        targetSdk 34
+        minSdk 29
+        targetSdk 36
 
-        versionName "0.1.8-dev"
-        versionCode = 9
+        versionName "2.0-rc1"
+        versionCode = 11
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes
         ndk.debugSymbolLevel = 'FULL'
@@ -26,9 +26,7 @@ android {
 
     productFlavors {
         root {
-            // Android O has native mouse capture, so don't show the rooted
-            // version to devices running O on the Play Store.
-            maxSdk 25
+            // Root builds follow the app-wide Android 10 minimum.
 
             externalNativeBuild {
                 ndkBuild {
