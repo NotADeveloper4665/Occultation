@@ -105,6 +105,12 @@ public class AbsoluteTouchContext implements TouchContext {
         lastTouchDownTime = eventTime;
         cancelled = confirmedTap = confirmedLongPress = false;
 
+        // Place the remote pointer on contact, rather than waiting for the
+        // tap dead-zone timer or the first movement event.
+        if (actionIndex == 0) {
+            updatePosition(eventX, eventY);
+        }
+
         if (actionIndex == 0) {
             // Start the timers
             startTapDownTimer();
