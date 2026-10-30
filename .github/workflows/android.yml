@@ -130,10 +130,10 @@ jobs:
           - Profile-aware direct Desktop connection and granular client input permissions.
           - Unified touchscreen routing with explicit Native touch-only behavior and no silent mouse fallback.
           - Release held keys, mouse buttons, touch and trackpad gestures on focus loss; restore input capture on focus return.
-          - Corrected touch coordinate mapping for stream surfaces, overlays and scaled views, with Android 5–9 compatibility.
+          - Corrected touch coordinate mapping for stream surfaces, overlays and scaled views, with Android 10+ compatibility.
           - Redesigned in-stream controls for Video, Network, Performance and Controls, including next-session bitrate selection and live connection details.
 
-          Download **Occultation-universal.apk** for any supported Android device or Waydroid, or choose the APK matching your CPU. Android 5.0 or newer is required. These are debug-signed development APKs, not production releases.
+          Download **Occultation-universal.apk** for any supported Android device or Waydroid, or choose the APK matching your CPU. Android 10 or newer is required. These are debug-signed development APKs, not production releases.
 
           Source: $GITHUB_SHA
           Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
