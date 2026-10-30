@@ -12,7 +12,6 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
@@ -336,18 +335,31 @@ public class GameMenu implements Game.GameMenuCallbacks {
         card.addView(line);
     }
 
-    private Button panelButton(Context context, String label, Runnable action) {
-        Button button = new Button(context);
-        button.setText(label);
-        button.setAllCaps(false);
+    private TextView panelButton(Context context, String label, Runnable action, int backgroundColor) {
+        TextView button = panelText(context, label, 14, true);
+        button.setGravity(android.view.Gravity.CENTER);
+        button.setTextColor(Color.WHITE);
+        button.setMinHeight(dp(44));
+        button.setPadding(dp(12), dp(10), dp(12), dp(10));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(backgroundColor);
+        background.setCornerRadius(dp(12));
+        button.setBackground(background);
+        button.setClickable(true);
+        button.setFocusable(true);
         button.setOnClickListener(v -> { hideMenu(); action.run(); });
         return button;
     }
 
+    private void addPanelButton(LinearLayout parent, String label, Runnable action, int color) {
+        TextView button = panelButton(parent.getContext(), label, action, color);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(44));
+        params.bottomMargin = dp(7);
+        parent.addView(button, params);
+    }
+
     private void showMoreMenu(GameInputDevice device) {
         List<MenuOption> options = new ArrayList<>();
-        options.add(new MenuOption(getString(R.string.game_menu_disconnect), game::disconnect));
-        options.add(new MenuOption(getString(R.string.game_menu_quit_session), game::quit));
         options.add(new MenuOption(getString(R.string.game_menu_upload_clipboard), true, () -> game.sendClipboard(true)));
         options.add(new MenuOption(getString(R.string.game_menu_fetch_clipboard), true, () -> game.getClipboard(0)));
         options.add(new MenuOption(getString(R.string.game_menu_server_cmd), true, () -> {
@@ -422,16 +434,28 @@ public class GameMenu implements Game.GameMenuCallbacks {
         performance.addView(perfHint);
 
         LinearLayout controls = panelCard(context, content, "Controls");
-        controls.addView(panelButton(context, "Input mode", () -> game.selectMouseMode(dialogScreenContext)));
-        controls.addView(panelButton(context, "Toggle keyboard", game::toggleKeyboard));
-        controls.addView(panelButton(context, "Toggle performance HUD", game::toggleHUD));
-        controls.addView(panelButton(context, "More controls and session actions", () -> showMoreMenu(device)));
+        addPanelLine(controls, "Native touch", game.getNativeTouchStatus());
+        addPanelButton(controls, "Input mode", () -> game.selectMouseMode(dialogScreenContext), Color.rgb(76, 62, 116));
+        addPanelButton(controls, "Toggle keyboard", game::toggleKeyboard, Color.rgb(48, 47, 64));
+        addPanelButton(controls, "Toggle performance HUD", game::toggleHUD, Color.rgb(48, 47, 64));
+        addPanelButton(controls, "More controls", () -> showMoreMenu(device), Color.rgb(48, 47, 64));
 
-        Button resume = new Button(context);
-        resume.setText("Return to stream");
-        resume.setAllCaps(false);
-        resume.setOnClickListener(v -> hideMenu());
-        content.addView(resume);
+        LinearLayout sessionActions = new LinearLayout(context);
+        sessionActions.setOrientation(LinearLayout.HORIZONTAL);
+        TextView disconnect = panelButton(context, "Disconnect", game::disconnect, Color.rgb(91, 54, 58));
+        TextView quit = panelButton(context, "Quit host app", game::quit, Color.rgb(119, 43, 58));
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, dp(46), 1);
+        actionParams.rightMargin = dp(6);
+        sessionActions.addView(disconnect, actionParams);
+        LinearLayout.LayoutParams quitParams = new LinearLayout.LayoutParams(0, dp(46), 1);
+        quitParams.leftMargin = dp(6);
+        sessionActions.addView(quit, quitParams);
+        controls.addView(sessionActions);
+
+        TextView resume = panelButton(context, "Return to stream", this::hideMenu, Color.rgb(105, 82, 166));
+        LinearLayout.LayoutParams resumeParams = new LinearLayout.LayoutParams(-1, dp(48));
+        resumeParams.topMargin = dp(4);
+        content.addView(resume, resumeParams);
 
         ScrollView scroll = new ScrollView(context);
         scroll.setFillViewport(true);
