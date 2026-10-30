@@ -70,6 +70,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Matrix;
 import android.graphics.Outline;
 import android.graphics.Point;
 import android.graphics.PointF;
@@ -2530,16 +2531,16 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             return new float[] { rawX, rawY };
         }
 
-        int[] sourceLocation = new int[2];
-        int[] streamLocation = new int[2];
-        sourceView.getLocationOnScreen(sourceLocation);
-        streamView.getLocationOnScreen(streamLocation);
+        // Compose the actual Android view transforms instead of estimating them
+        // from screen-space origins and scaleX/scaleY. This handles translated,
+        // scaled, or rotated overlay views without applying the stream scale twice.
+        Matrix sourceToTarget = new Matrix();
+        sourceView.transformMatrixToGlobal(sourceToTarget);
+        streamView.transformMatrixToLocal(sourceToTarget);
 
-        return com.limelight.binding.input.touch.StreamCoordinateMapper.mapToTarget(
-                rawX, rawY,
-                sourceLocation[0], sourceLocation[1],
-                streamLocation[0], streamLocation[1],
-                streamView.getScaleX(), streamView.getScaleY());
+        float[] point = new float[] { rawX, rawY };
+        sourceToTarget.mapPoints(point);
+        return point;
     }
 
     private static float normalizeValueInRange(float value, InputDevice.MotionRange range) {
