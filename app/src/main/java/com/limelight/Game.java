@@ -191,6 +191,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private boolean displayedFailureDialog = false;
     private boolean connecting = false;
     public boolean connected = false;
+    private volatile int lastConnectionStatus = -1;
     private boolean autoEnterPip = false;
     private boolean surfaceCreated = false;
     private boolean attemptedConnection = false;
@@ -3649,6 +3650,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                lastConnectionStatus = connectionStatus;
                 if (prefConfig.disableWarnings) {
                     return;
                 }
@@ -4346,6 +4348,45 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+
+    /** Values displayed by the in-stream controls panel. */
+    public int getConfiguredStreamBitrate() {
+        return prefConfig == null ? 0 : (isMetered ? prefConfig.meteredBitrate : prefConfig.bitrate);
+    }
+
+    public int getConfiguredStreamWidth() { return displayWidth; }
+    public int getConfiguredStreamHeight() { return displayHeight; }
+    public int getConfiguredStreamFps() { return prefConfig == null ? 0 : Math.round(prefConfig.fps); }
+    public boolean isWanOptimizationEnabled() { return prefConfig != null && prefConfig.wanOptimization; }
+
+    public String getStreamConnectionStatus() {
+        if (!connected) return connecting ? "Connecting" : "Disconnected";
+        if (lastConnectionStatus == MoonBridge.CONN_STATUS_POOR) return "Poor connection";
+        if (lastConnectionStatus == MoonBridge.CONN_STATUS_OKAY) return "Connection stable";
+        return "Connected";
+    }
+
+    public String getEstimatedNetworkRtt() {
+        if (!connected) return "Unavailable";
+        try {
+            long info;
+            synchronized (MoonBridge.class) {
+                info = MoonBridge.getEstimatedRttInfo();
+            }
+            long rtt = info >>> 32;
+            return rtt == 0 ? "Warming up" : rtt + " ms";
+        } catch (RuntimeException e) {
+            return "Unavailable";
+        }
+    }
+
+    /** Bitrate is negotiated at stream start in the current native API; save for the next session. */
+    public void saveStreamBitrateForNextSession(int bitrateKbps) {
+        int safeBitrate = Math.max(500, Math.min(300000, bitrateKbps));
+        com.limelight.profiles.ProfilesManager.getInstance()
+                .setOption(this, "seekbar_bitrate_kbps", safeBitrate);
     }
 
     @Override
