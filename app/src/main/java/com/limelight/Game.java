@@ -192,6 +192,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private boolean connecting = false;
     public boolean connected = false;
     private volatile int lastConnectionStatus = -1;
+    private boolean isMetered;
     private boolean autoEnterPip = false;
     private boolean surfaceCreated = false;
     private boolean attemptedConnection = false;
@@ -528,7 +529,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Warn the user if they're on a metered connection
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        boolean isMetered = connMgr.isActiveNetworkMetered();
+        isMetered = connMgr.isActiveNetworkMetered();
         if (isMetered) {
             displayTransientMessage(getResources().getString(R.string.conn_metered));
         }
