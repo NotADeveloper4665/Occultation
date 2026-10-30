@@ -17,6 +17,7 @@ import android.os.Vibrator;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.DialogFragment;
 import androidx.preference.CheckBoxPreference;
@@ -336,6 +337,20 @@ public class StreamSettings extends AppCompatActivity {
         public void initializePreferences() {
             addPreferencesFromResource(R.xml.preferences);
             PreferenceScreen screen = getPreferenceScreen();
+            Preference appearancePreference = findPreference("appearance_theme");
+            if (appearancePreference != null) {
+                appearancePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                    String mode = String.valueOf(newValue);
+                    if ("light".equals(mode)) {
+                        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+                    } else if ("dark".equals(mode)) {
+                        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+                    } else {
+                        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                    }
+                    return true;
+                });
+            }
             Preference neuralReport = findPreference("neural_upscaling_report");
             if (neuralReport != null) neuralReport.setOnPreferenceClickListener(preference -> {
                 android.app.Activity reportActivity = requireActivity();
