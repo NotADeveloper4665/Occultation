@@ -8,8 +8,8 @@ android {
     namespace 'com.limelight'
 
     defaultConfig {
-        minSdk 21
-        targetSdk 34
+        minSdk 29
+        targetSdk 36
 
         versionName "1.9-dev"
         versionCode = 10
