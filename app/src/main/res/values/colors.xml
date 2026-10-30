@@ -19,4 +19,7 @@
     <color name="streamControlOutline">#FFD0BCFF</color>
     <color name="streamControlActive">#FF6750A4</color>
     <color name="streamControlRipple">#66D0BCFF</color>
+    <color name="streamHudBackground">#CC121318</color>
+    <color name="streamHudOutline">#66797680</color>
+    <color name="streamHudText">#FFF1EFF7</color>
 </resources>
