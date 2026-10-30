@@ -15,4 +15,8 @@
     <color name="colorOnSurfaceVariant">#62616A</color>
     <color name="colorOutline">#797680</color>
     <color name="profileAccent">#6750A4</color>
+    <color name="streamControlBackground">#CC1B1B21</color>
+    <color name="streamControlOutline">#FFD0BCFF</color>
+    <color name="streamControlActive">#FF6750A4</color>
+    <color name="streamControlRipple">#66D0BCFF</color>
 </resources>
