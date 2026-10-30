@@ -4,6 +4,10 @@
     xmlns:seekbar="http://schemas.moonlight-stream.com/apk/res/seekbar"
     app:iconSpaceReserved="false">
 
+    <PreferenceCategory android:key="category_appearance" android:title="@string/category_appearance" app:iconSpaceReserved="false">
+        <ListPreference android:key="appearance_theme" android:title="@string/appearance_theme_title" android:summary="@string/appearance_theme_summary" android:defaultValue="system" android:entries="@array/appearance_theme_names" android:entryValues="@array/appearance_theme_values" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:key="category_video_settings"
         android:title="@string/category_video_settings"
