@@ -146,6 +146,23 @@ public class ProfilesManager {
         saveIfPossible();
     }
 
+    /** Persist a setting into the active profile, or the base preferences when no profile is active. */
+    public void setOption(Context context, String key, Object value) {
+        SettingsProfile active = getActive();
+        if (active == null) {
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+                    .edit().putInt(key, ((Number) value).intValue()).apply();
+            return;
+        }
+        Map<String, Object> options = active.getOptions();
+        if (options == null) options = new LinkedHashMap<>();
+        else options = new LinkedHashMap<>(options);
+        options.put(key, value);
+        active.setOptions(options);
+        active.setModifiedUtc(System.currentTimeMillis());
+        update(active);
+    }
+
     public void delete(UUID uuid) {
         profiles.remove(uuid);
         if (uuid.equals(activeProfileId)) {
