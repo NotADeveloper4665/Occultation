@@ -60,8 +60,7 @@ Existing GPL license and upstream copyright notices remain in effect.
 When Syzygy enables `-tails` or its Network auto-authorization setting and verifies
 this connection belongs to its own tailnet, adding or tapping the host pairs
 without a phrase or PIN. This requires connecting through the host's Tailscale
-address, with the Tailscale VPN active on Android 6 or newer. Older Android
-versions use phrase pairing. Full permissions are granted by the host; client input restrictions
+address, with the Tailscale VPN active on Android 10 or newer. Phrase pairing remains available when automatic enrollment is unavailable. Full permissions are granted by the host; client input restrictions
 still apply. Shared external nodes are excluded. Phrase pairing remains available
 for other connections; the old 48-character input is no longer accepted.
 
