@@ -2531,16 +2531,28 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             return new float[] { rawX, rawY };
         }
 
-        // Compose the actual Android view transforms instead of estimating them
-        // from screen-space origins and scaleX/scaleY. This handles translated,
-        // scaled, or rotated overlay views without applying the stream scale twice.
-        Matrix sourceToTarget = new Matrix();
-        sourceView.transformMatrixToGlobal(sourceToTarget);
-        streamView.transformMatrixToLocal(sourceToTarget);
-
         float[] point = new float[] { rawX, rawY };
-        sourceToTarget.mapPoints(point);
-        return point;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Full ancestor/property transforms are available on Android 10+.
+            Matrix sourceToTarget = new Matrix();
+            sourceView.transformMatrixToGlobal(sourceToTarget);
+            streamView.transformMatrixToLocal(sourceToTarget);
+            sourceToTarget.mapPoints(point);
+            return point;
+        }
+
+        // Android 5–9 fallback: use screen-space view origins and the stream
+        // surface scale. This avoids the API-29-only transform helpers while
+        // keeping the legacy minimum SDK fully supported.
+        int[] sourceLocation = new int[2];
+        int[] targetLocation = new int[2];
+        sourceView.getLocationOnScreen(sourceLocation);
+        streamView.getLocationOnScreen(targetLocation);
+        return StreamCoordinateMapper.mapToTarget(
+                rawX, rawY,
+                sourceLocation[0], sourceLocation[1],
+                targetLocation[0], targetLocation[1],
+                streamView.getScaleX(), streamView.getScaleY());
     }
 
     private static float normalizeValueInRange(float value, InputDevice.MotionRange range) {
