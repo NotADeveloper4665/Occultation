@@ -4218,6 +4218,23 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private com.limelight.ui.DesktopControlsView desktopControls;
+    private boolean firstVideoFrameRendered;
+
+    private void updateDesktopControlsVisibility() {
+        if (desktopControls == null) return;
+        boolean show = com.limelight.ui.DesktopControlsVisibility.shouldShow(
+                InputModeRouter.usesDesktopControls(activeInputMode), firstVideoFrameRendered);
+        desktopControls.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    public void onVideoFrameRendered() {
+        runOnUiThread(() -> {
+            if (isFinishing() || firstVideoFrameRendered) return;
+            firstVideoFrameRendered = true;
+            updateDesktopControlsVisibility();
+        });
+    }
 
     private byte overlayModifiers;
     private final java.util.Set<Integer> overlayKeys = new java.util.HashSet<>();
@@ -4320,6 +4337,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             desktopControls.setConfiguration(new com.limelight.overlay.OverlayStore(this).forGame(appName), this::sendOverlayKey);
             ((android.view.ViewGroup) streamView.getParent()).addView(desktopControls,
                     new android.widget.FrameLayout.LayoutParams(-1, -1));
+            // Keep the controls non-interactive until MediaCodec confirms a frame reached the surface.
+            updateDesktopControlsVisibility();
         }
 
         // Always exit zoom mode if mouse mode has changed
