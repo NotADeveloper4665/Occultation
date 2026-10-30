@@ -2877,13 +2877,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && event.getClassification() == MotionEvent.CLASSIFICATION_TWO_FINGER_SWIPE) {
                             if (!pointerSwiping) {
                                 pointerSwiping = true;
-                                handleTouchInput(event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_DOWN, 1, 2);
+                                handleTouchInput(view, event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_DOWN, 1, 2);
                             }
-                            return handleTouchInput(event, trackpadContextMap, false, MotionEvent.ACTION_MOVE, 1, 2);
+                            return handleTouchInput(view, event, trackpadContextMap, false, MotionEvent.ACTION_MOVE, 1, 2);
                         } else if (pointerSwiping && eventAction == MotionEvent.ACTION_UP) {
                             pointerSwiping = false;
                             synthClickPending = false;
-                            handleTouchInput(event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_UP, 1, 2);
+                            handleTouchInput(view, event, trackpadContextMap, false, MotionEvent.ACTION_POINTER_UP, 1, 2);
                             return true;
                         }
 
@@ -3065,7 +3065,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // This case is for fingers
             else {
                 if (eventSource == InputDevice.SOURCE_TOUCHPAD) {
-                    return handleTouchInput(event, trackpadContextMap, false);
+                    return handleTouchInput(view, event, trackpadContextMap, false);
                 } else {
                     if (virtualController != null &&
                             (virtualController.getControllerMode() == VirtualController.ControllerMode.MoveButtons ||
@@ -3117,7 +3117,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         }
                     }
 
-                    return handleTouchInput(event, touchContextMap, true);
+                    return handleTouchInput(view, event, touchContextMap, true);
                 }
             }
 
@@ -3144,7 +3144,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Handle view scaling
         if (isTouchScreen) {
-            float[] normalizedCoords = getNormalizedCoordinates(streamView, eventX, eventY);
+            float[] normalizedCoords = getNormalizedCoordinates(sourceView, eventX, eventY);
             eventX = (int)normalizedCoords[0];
             eventY = (int)normalizedCoords[1];
         }
@@ -3201,7 +3201,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     int pointer1X = (int)event.getX(1);
                     int pointer1Y = (int)event.getY(1);
                     if (isTouchScreen) {
-                        float[] normalizedCoords = getNormalizedCoordinates(streamView, pointer1X, pointer1Y);
+                        float[] normalizedCoords = getNormalizedCoordinates(sourceView, pointer1X, pointer1Y);
                         pointer1X = (int)normalizedCoords[0];
                         pointer1Y = (int)normalizedCoords[1];
                     }
@@ -3224,7 +3224,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                             int historicalX = (int)event.getHistoricalX(aActionIndex, i);
                             int historicalY = (int)event.getHistoricalY(aActionIndex, i);
                             if (isTouchScreen) {
-                                float[] normalizedCoords = getNormalizedCoordinates(streamView, historicalX, historicalY);
+                                float[] normalizedCoords = getNormalizedCoordinates(sourceView, historicalX, historicalY);
                                 historicalX = (int)normalizedCoords[0];
                                 historicalY = (int)normalizedCoords[1];
                             }
@@ -3244,7 +3244,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         int currentX = (int)event.getX(aActionIndex);
                         int currentY = (int)event.getY(aActionIndex);
                         if (isTouchScreen) {
-                            float[] normalizedCoords = getNormalizedCoordinates(streamView, currentX, currentY);
+                            float[] normalizedCoords = getNormalizedCoordinates(sourceView, currentX, currentY);
                             currentX = (int)normalizedCoords[0];
                             currentY = (int)normalizedCoords[1];
                         }
