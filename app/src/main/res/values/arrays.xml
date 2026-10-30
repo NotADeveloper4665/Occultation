@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="appearance_theme_names">
+        <item>@string/appearance_theme_system</item>
+        <item>@string/appearance_theme_light</item>
+        <item>@string/appearance_theme_dark</item>
+    </string-array>
+    <string-array name="appearance_theme_values" translatable="false">
+        <item>system</item><item>light</item><item>dark</item>
+    </string-array>
+
     <string-array name="resolution_names">
         <item>@string/resolution_360p</item>
         <item>@string/resolution_480p</item>
