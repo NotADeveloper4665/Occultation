@@ -39,6 +39,6 @@
         android:layout_centerHorizontal="true"
         android:gravity="center"
         android:textSize="16sp"
-        android:textColor="@color/colorOnBackground" >
+        android:textColor="@color/colorOnSurface" >
     </TextView>
 </RelativeLayout>
