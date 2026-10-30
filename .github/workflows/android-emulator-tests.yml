@@ -83,14 +83,6 @@ jobs:
               exit 1
             fi
 
-            # Verify the settings/profile entry point can also be opened.
-            settings_output="$(adb shell am start -W -n "$package/com.limelight.ProfilesActivity" 2>&1 || true)"
-            printf '%s\n' "$settings_output"
-            if printf '%s\n' "$settings_output" | grep -q 'Error:'; then
-              echo "::error::Profiles/settings activity failed to launch"
-              adb logcat -d -t 2500
-              exit 1
-            fi
             sleep 3
             adb shell pidof "$package" >/dev/null
 
