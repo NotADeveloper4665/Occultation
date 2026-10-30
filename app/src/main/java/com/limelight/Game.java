@@ -4386,7 +4386,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     public void saveStreamBitrateForNextSession(int bitrateKbps) {
         int safeBitrate = Math.max(500, Math.min(300000, bitrateKbps));
         com.limelight.profiles.ProfilesManager.getInstance()
-                .setOption(this, "seekbar_bitrate_kbps", safeBitrate);
+                .setOption(this, isMetered ? "seekbar_metered_bitrate_kbps" : "seekbar_bitrate_kbps", safeBitrate);
     }
 
     @Override
