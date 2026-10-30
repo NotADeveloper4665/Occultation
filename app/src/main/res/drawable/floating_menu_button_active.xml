@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#80FFFFFF">
+    android:color="@color/streamControlRipple">
     <item>
         <shape android:shape="oval">
-            <solid android:color="#CC2E7D32" />
-            <stroke android:color="#FF4CAF50" android:width="2dp" />
-            <size android:width="36dp" android:height="36dp" />
+            <solid android:color="@color/streamControlActive" />
+            <stroke android:color="@color/streamControlOutline" android:width="2dp" />
+            <size android:width="48dp" android:height="36dp" />
         </shape>
     </item>
 </ripple>
