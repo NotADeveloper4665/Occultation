@@ -75,7 +75,7 @@ jobs:
       - name: Upload development APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Occultation-1.9-dev-APKs
+          name: Occultation-2.0-rc1-APKs
           path: app/build/outputs/apk/nonRoot_game/debug/*.apk
           if-no-files-found: error
       - name: Publish downloadable development APKs
