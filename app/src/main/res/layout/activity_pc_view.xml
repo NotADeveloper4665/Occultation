@@ -54,7 +54,7 @@
     <ImageButton
         android:id="@+id/settingsButton"
         android:contentDescription="@string/host_settings"
-        android:tint="@color/colorOnSurface"
+        app:tint="@color/colorOnSurface"
         android:layout_width="70dp"
         android:layout_height="65dp"
         android:cropToPadding="false"
@@ -69,7 +69,7 @@
     <ImageButton
         android:id="@+id/helpButton"
         android:contentDescription="@string/help"
-        android:tint="@color/colorOnSurface"
+        app:tint="@color/colorOnSurface"
         android:layout_width="70dp"
         android:layout_height="65dp"
         android:cropToPadding="false"
@@ -84,7 +84,7 @@
     <ImageButton
         android:id="@+id/manuallyAddPc"
         android:contentDescription="@string/title_add_pc"
-        android:tint="@color/colorOnSurface"
+        app:tint="@color/colorOnSurface"
         android:layout_width="70dp"
         android:layout_height="65dp"
         android:cropToPadding="false"
