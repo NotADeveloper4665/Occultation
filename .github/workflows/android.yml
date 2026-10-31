@@ -1,12 +1,6 @@
 name: Occultation Android
 on:
   workflow_dispatch:
-    inputs:
-      rotate_development_signing_key:
-        description: 'Approve the one-time development signing-key rotation (existing development installs must be reinstalled)'
-        required: false
-        default: false
-        type: boolean
   pull_request:
   push:
     branches: [main, moonlight-noir]
@@ -45,7 +39,6 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.OCCULTATION_DEV_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.OCCULTATION_DEV_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.OCCULTATION_DEV_KEY_PASSWORD }}
-          ROTATE_SIGNING_KEY: ${{ inputs.rotate_development_signing_key }}
         run: |
           set -euo pipefail
           retained_key="$RUNNER_TEMP/occultation-development.keystore"
@@ -64,15 +57,9 @@ jobs:
             echo "OCCULTATION_DEV_KEY_ALIAS=$KEY_ALIAS"
             echo "OCCULTATION_DEV_KEY_PASSWORD=$KEY_PASSWORD"
           } >> "$GITHUB_ENV"
-          if [ "$ROTATE_SIGNING_KEY" = "true" ]; then
-            echo "rotation=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::Approved development signing-key rotation. Existing development APK installations will not accept this signer."
-          else
-            echo "rotation=false" >> "$GITHUB_OUTPUT"
-            if gh release view dev --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > "$signer_dir/assets.txt" 2>/dev/null && grep -qx 'development-signer.sha256' "$signer_dir/assets.txt"; then
-              gh release download dev --repo "$GITHUB_REPOSITORY" --pattern development-signer.sha256 --dir "$signer_dir"
-              test -s "$signer_dir/development-signer.sha256"
-            fi
+          if gh release view dev --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > "$signer_dir/assets.txt" 2>/dev/null && grep -qx 'development-signer.sha256' "$signer_dir/assets.txt"; then
+            gh release download dev --repo "$GITHUB_REPOSITORY" --pattern development-signer.sha256 --dir "$signer_dir"
+            test -s "$signer_dir/development-signer.sha256"
           fi
       - name: Test signing verification
         run: python3 -m unittest discover -s scripts -p 'test_development_signing.py' -v
