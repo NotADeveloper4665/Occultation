@@ -337,6 +337,10 @@ public class StreamSettings extends AppCompatActivity {
         public void initializePreferences() {
             addPreferencesFromResource(R.xml.preferences);
             PreferenceScreen screen = getPreferenceScreen();
+            Preference aboutOccultation = findPreference("about_occultation");
+            if (aboutOccultation != null) {
+                aboutOccultation.setSummary(getString(R.string.summary_about_occultation, BuildConfig.VERSION_NAME));
+            }
             Preference appearancePreference = findPreference("appearance_theme");
             if (appearancePreference != null) {
                 appearancePreference.setOnPreferenceChangeListener((preference, newValue) -> {
