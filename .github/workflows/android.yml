@@ -1,6 +1,12 @@
 name: Occultation Android
 on:
   workflow_dispatch:
+    inputs:
+      rotate_development_signing_key:
+        description: 'Approve the one-time development signing-key rotation (existing development installs must be reinstalled)'
+        required: false
+        default: false
+        type: boolean
   pull_request:
   push:
     branches: [main, moonlight-noir]
@@ -30,35 +36,44 @@ jobs:
       - name: Install Android toolchain
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.0.12077973'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Restore development signing key
+      - name: Prepare persistent development signing key
         id: development-key
-        if: github.event_name != 'pull_request'
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/occultation-development.keystore
-          key: occultation-development-signing-v2
-      - name: Prepare retained development signing key
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
+          KEYSTORE_BASE64: ${{ secrets.OCCULTATION_DEV_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.OCCULTATION_DEV_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.OCCULTATION_DEV_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.OCCULTATION_DEV_KEY_PASSWORD }}
+          ROTATE_SIGNING_KEY: ${{ inputs.rotate_development_signing_key }}
         run: |
           set -euo pipefail
-          retained_key="$HOME/.android/occultation-development.keystore"
-          mkdir -p "$RUNNER_TEMP/occultation-signer"
-          gh release view dev --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/occultation-signer/assets.txt"
-          if grep -qx 'development-signer.sha256' "$RUNNER_TEMP/occultation-signer/assets.txt"; then
-            gh release download dev --repo "$GITHUB_REPOSITORY" --pattern development-signer.sha256 --dir "$RUNNER_TEMP/occultation-signer"
-            if [ ! -s "$retained_key" ]; then
-              echo '::error::Retained signing key is missing. Restore it before publishing; refusing automatic key rotation.'
-              exit 1
+          retained_key="$RUNNER_TEMP/occultation-development.keystore"
+          signer_dir="$RUNNER_TEMP/occultation-signer"
+          mkdir -p "$signer_dir"
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo '::error::Development signing secrets are missing. Run scripts/setup-development-signing.sh on a trusted machine, then rerun this workflow.'
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$retained_key"
+          chmod 600 "$retained_key"
+          keytool -list -keystore "$retained_key" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          {
+            echo "OCCULTATION_DEV_KEYSTORE=$retained_key"
+            echo "OCCULTATION_DEV_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "OCCULTATION_DEV_KEY_ALIAS=$KEY_ALIAS"
+            echo "OCCULTATION_DEV_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          if [ "$ROTATE_SIGNING_KEY" = "true" ]; then
+            echo "rotation=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Approved development signing-key rotation. Existing development APK installations will not accept this signer."
+          else
+            echo "rotation=false" >> "$GITHUB_OUTPUT"
+            if gh release view dev --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > "$signer_dir/assets.txt" 2>/dev/null && grep -qx 'development-signer.sha256' "$signer_dir/assets.txt"; then
+              gh release download dev --repo "$GITHUB_REPOSITORY" --pattern development-signer.sha256 --dir "$signer_dir"
+              test -s "$signer_dir/development-signer.sha256"
             fi
           fi
-          if [ ! -s "$retained_key" ]; then
-            umask 077
-            mkdir -p "$(dirname "$retained_key")"
-            keytool -genkeypair -keystore "$retained_key" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Occultation Development,O=Occultation,C=US'
-          fi
-          echo "OCCULTATION_DEV_KEYSTORE=$retained_key" >> "$GITHUB_ENV"
       - name: Test signing verification
         run: python3 -m unittest discover -s scripts -p 'test_development_signing.py' -v
       - name: Test, lint and build development APKs
@@ -66,12 +81,6 @@ jobs:
       - name: Verify development APK signing continuity
         if: github.event_name != 'pull_request'
         run: python3 scripts/check-development-signing.py --apks app/build/outputs/apk/nonRoot_game/debug --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner" --expected "$RUNNER_TEMP/occultation-signer/development-signer.sha256"
-      - name: Retain signing key before publishing
-        if: github.event_name != 'pull_request' && steps.development-key.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.android/occultation-development.keystore
-          key: occultation-development-signing-v2
       - name: Upload development APKs
         uses: actions/upload-artifact@v4
         with:
@@ -109,27 +118,11 @@ jobs:
           cat > release-notes.md <<EOF
           Occultation 0.1.8 development build
 
-          - Visible auto-sized action text on overlay buttons, including built-in actions; correct measurement at circular control bounds.
-          - Copyable neural hardware report under Video settings. This is diagnostics, not an active neural upscaler or a claim of TPU execution.
-          - Purple geometric horizon artwork and translucent loading cards matching the overlay editor; live connection stage text and accessible loading status.
-          - Assign keyboard keys, keyboard shortcuts, or built-in actions to cluster and custom buttons; delete buttons with confirmation.
-          - Searchable key picker with F1–F24, numpad/media/browser keys and an advanced host-dependent key-code option.
-          - Layout format v2 imports older layouts automatically. Modifier keys press first and release last.
-          - Retained development signing path with a published certificate pin; future builds reject unexpected signing-key changes. Earlier development APKs may require reinstalling.
-          - Searchable Settings with Common settings and a section picker; existing preferences are preserved.
-          - Remote desktop mode with round purple controls, a tighter button cluster, a trackpad and full-screen pointer toggle.
-          - Corrected gestures: tap left-clicks; hold or two-finger tap right-clicks.
-          - Overlay configuration: desktop preview, move/scale controls, named layouts and optional game-name matching.
-          - Add keyboard buttons with automatic key labels, held-key input and reliable release; import/export versioned JSON layouts.
-          - WAN / 5G Optimization: smaller packets, responsive presentation, compatible Syzygy feedback and bounded audio tempo adaptation.
-          - Host/encoder/audio capabilities keep normal behavior when unsupported. This is a development preview; real cellular performance remains unverified.
-          - Syzygy phrase pairing from Add Computer, the host pairing chooser, and the host long-press menu.
-          - Automatic full-permission pairing when Syzygy enables -tails and verifies this device in the same tailnet.
-          - Pair using the six-word phrase printed by Syzygy; no host PIN or Web UI required.
-          - Pairing phrases are not saved. Reconnection uses the authenticated paired certificate.
-          - Profile-aware direct Desktop connection and granular client input permissions.
+          - Retained development signing identity backed by repository Actions secrets; normal builds reject unexpected signer changes.
+          - Earlier development APKs signed with the previous key must be uninstalled before installing this rotated-key build.
+          - Debug-signed development APKs; not a production release.
 
-          Download **Occultation-universal.apk** for any supported Android device or Waydroid, or choose the APK matching your CPU. Android 5.0 or newer is required. These are debug-signed development APKs, not production releases.
+          Download **Occultation-universal.apk** for any supported Android device or Waydroid, or choose the APK matching your CPU. Android 5.0 or newer is required.
 
           Source: $GITHUB_SHA
           Tests, lint, and build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
