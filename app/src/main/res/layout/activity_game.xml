@@ -47,7 +47,9 @@
         android:layout_gravity="right"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:gravity="right"
-        android:background="#80000000"
+        android:background="@drawable/stream_hud_background"
+        android:textColor="@color/streamHudText"
+        android:padding="8dp"
         android:preferKeepClear="true"
         android:visibility="gone" />
 
@@ -67,16 +69,19 @@
             android:layout_gravity="left"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:gravity="left"
-            android:background="#80000000"
+            android:background="@drawable/stream_hud_background"
+            android:textColor="@color/streamHudText"
+            android:padding="8dp"
             android:preferKeepClear="true"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/performanceOverlayLite"
             tools:text="延迟/解码：109ms/7ms 丢包率：69% FPS：60"
-            android:textSize="10sp"
+            android:textSize="12sp"
+            android:textColor="@color/streamHudText"
             android:layout_marginTop="4dp"
-            android:background="@drawable/ic_hud_bg"
+            android:background="@drawable/stream_hud_background"
             android:paddingLeft="5dp"
             android:paddingRight="5dp"
             android:paddingTop="2dp"
@@ -92,29 +97,29 @@
     <!-- Floating Menu Button -->
     <ImageButton
         android:id="@+id/floatingMenuButton"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|start"
         android:layout_marginTop="24dp"
         android:background="@drawable/floating_menu_button"
         android:contentDescription="@string/menu_button"
         android:src="@drawable/ic_menu"
-        android:padding="6dp"
+        android:padding="12dp"
         android:visibility="gone"
-        android:elevation="9999dp" />
+        android:elevation="8dp" />
 
     <ImageButton
         android:id="@+id/overlayToggleZoomButton"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="24dp"
         android:background="@drawable/floating_menu_button"
         android:src="@drawable/ic_zoom_toggle"
-        android:padding="6dp"
+        android:padding="12dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/toggle_pan_zoom_mode"
         android:visibility="gone"
-        android:elevation="9999dp" />
+        android:elevation="8dp" />
 
 </merge>

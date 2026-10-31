@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:background="#1A1A1A"
+    android:background="@color/colorBackground"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".PcView">
@@ -31,9 +31,10 @@
             android:layout_centerHorizontal="true">
             <ProgressBar
                 android:id="@+id/pcs_loading"
-                android:layout_width="75dp"
-                android:layout_height="75dp"
-                android:indeterminate="true"/>
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/colorPrimary"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -42,7 +43,8 @@
                 android:layout_marginLeft="10dp"
                 android:layout_marginStart="10dp"
                 android:layout_centerVertical="true"
-                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="@color/colorOnBackground"
                 android:gravity="center"
                 android:text="@string/searching_pc"/>
         </RelativeLayout>
@@ -50,7 +52,9 @@
     </RelativeLayout>
 
     <ImageButton
-        android:id="@+id/settingsButton"
+        android:id="@+id/settingsButton"
+        android:contentDescription="@string/host_settings"
+        app:tint="@color/colorOnSurface"
         android:layout_width="70dp"
         android:layout_height="65dp"
         android:cropToPadding="false"
@@ -63,7 +67,9 @@
         style="?android:attr/borderlessButtonStyle"/>
 
     <ImageButton
-        android:id="@+id/helpButton"
+        android:id="@+id/helpButton"
+        android:contentDescription="@string/help"
+        app:tint="@color/colorOnSurface"
         android:layout_width="70dp"
         android:layout_height="65dp"
         android:cropToPadding="false"
@@ -76,7 +82,9 @@
         style="?android:attr/borderlessButtonStyle"/>
 
     <ImageButton
-        android:id="@+id/manuallyAddPc"
+        android:id="@+id/manuallyAddPc"
+        android:contentDescription="@string/title_add_pc"
+        app:tint="@color/colorOnSurface"
         android:layout_width="70dp"
         android:layout_height="65dp"
         android:cropToPadding="false"

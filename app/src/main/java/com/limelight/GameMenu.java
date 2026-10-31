@@ -1,7 +1,7 @@
 package com.limelight;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
@@ -19,6 +19,7 @@ import com.limelight.binding.input.KeyboardTranslator;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.utils.KeyConfigHelper;
 import com.limelight.utils.KeyMapper;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -108,7 +109,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
     private void showMenuDialog(String title, MenuOption[] options) {
         int themeResId = game.getApplicationInfo().theme;
         Context themedContext = new ContextThemeWrapper(dialogScreenContext, themeResId);
-        AlertDialog.Builder builder = new AlertDialog.Builder(themedContext);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(themedContext);
         builder.setTitle(title);
 
         final ArrayAdapter<String> actions = new ArrayAdapter<>(themedContext, android.R.layout.simple_list_item_1);
@@ -304,7 +305,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
                     if (serverCmds.isEmpty()) {
                         int themeResId = game.getApplicationInfo().theme;
                         Context themedContext = new ContextThemeWrapper(dialogScreenContext, themeResId);
-                        new AlertDialog.Builder(themedContext)
+                        new MaterialAlertDialogBuilder(themedContext)
                                 .setTitle(R.string.game_dialog_title_server_cmd_empty)
                                 .setMessage(R.string.game_dialog_message_server_cmd_empty)
                                 .show();

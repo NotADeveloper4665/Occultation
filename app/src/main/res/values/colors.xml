@@ -1,4 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="profileAccent">#FF4081</color>
+    <!-- Shared semantic Material roles. Keep names stable across day/night. -->
+    <color name="colorPrimary">#6750A4</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorPrimaryContainer">#EADDFF</color>
+    <color name="colorOnPrimaryContainer">#21005D</color>
+    <color name="colorSecondary">#625B71</color>
+    <color name="colorOnSecondary">#FFFFFF</color>
+    <color name="colorBackground">#F8F7FA</color>
+    <color name="colorOnBackground">#1B1B21</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorOnSurface">#1B1B21</color>
+    <color name="colorSurfaceVariant">#EAE7EF</color>
+    <color name="colorOnSurfaceVariant">#62616A</color>
+    <color name="colorOutline">#797680</color>
+    <color name="profileAccent">#6750A4</color>
+    <color name="streamControlBackground">#CC1B1B21</color>
+    <color name="streamControlOutline">#FFD0BCFF</color>
+    <color name="streamControlActive">#FF6750A4</color>
+    <color name="streamControlRipple">#66D0BCFF</color>
+    <color name="streamHudBackground">#CC121318</color>
+    <color name="streamHudOutline">#66797680</color>
+    <color name="streamHudText">#FFF1EFF7</color>
 </resources>
