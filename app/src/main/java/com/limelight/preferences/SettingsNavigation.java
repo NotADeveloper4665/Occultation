@@ -47,7 +47,7 @@ public final class SettingsNavigation {
                 case "category_virtual_trackpad_settings": title = "Touchpad sensitivity"; group = 4; break;
                 case "category_perf_monitor_settings": title = "Performance & logs"; group = 9; break;
                 case "category_advanced_settings": title = "Advanced streaming"; group = 9; break;
-                case "category_settings_misc": title = "Language, help & updates"; group = 10; break;
+                case "category_settings_misc": title = "Language & About"; group = 10; break;
                 case "eclipse_connection_category": title = "Connection & launch"; group = 7; break;
                 case "eclipse_input_category": title = "Input permissions"; group = 7; break;
                 default: title = String.valueOf(category.getTitle()); group = 9;
