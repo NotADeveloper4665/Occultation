@@ -5,7 +5,7 @@
         <shape android:shape="oval">
             <solid android:color="@color/streamControlBackground" />
             <stroke android:color="@color/streamControlOutline" android:width="2dp" />
-            <size android:width="48dp" android:height="36dp" />
+            <size android:width="48dp" android:height="48dp" />
         </shape>
     </item>
 </ripple>
