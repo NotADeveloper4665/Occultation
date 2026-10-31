@@ -1004,17 +1004,10 @@
             app:iconSpaceReserved="false" />
 
         <com.limelight.preferences.WebLauncherPreference
-            url="https://github.com/ClassicOldSong/moonlight-android/releases"
-            android:key="option_software_release"
-            android:summary="@string/summary_software_update"
-            android:title="@string/title_software_update"
-            app:iconSpaceReserved="false" />
-
-        <com.limelight.preferences.WebLauncherPreference
-            url="@string/obtainium_app_url"
-            android:key="option_follow_update"
-            android:summary="@string/summary_follow_update"
-            android:title="@string/title_follow_update"
+            url="https://github.com/NotADeveloper4665/Occultation"
+            android:key="about_occultation"
+            android:summary="@string/summary_about_occultation"
+            android:title="@string/title_about_occultation"
             app:iconSpaceReserved="false" />
     </PreferenceCategory>
     <PreferenceCategory android:key="eclipse_connection_category" android:title="@string/eclipse_connection_title" app:iconSpaceReserved="false">
