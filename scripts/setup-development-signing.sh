@@ -44,6 +44,16 @@ printf '%s' "$password" | gh secret set OCCULTATION_DEV_KEYSTORE_PASSWORD --repo
 printf '%s' "$alias_name" | gh secret set OCCULTATION_DEV_KEY_ALIAS --repo "$repo"
 printf '%s' "$password" | gh secret set OCCULTATION_DEV_KEY_PASSWORD --repo "$repo"
 
+# Preserve the old public signer pin for audit, then remove the active pin.
+# The next moonlight-noir build will publish the new fingerprint from the new key.
+if gh release view dev --repo "$repo" --json assets --jq '.assets[].name' > "$tmp/assets.txt" 2>/dev/null \
+    && grep -qx 'development-signer.sha256' "$tmp/assets.txt"; then
+    gh release download dev --repo "$repo" --pattern development-signer.sha256 --dir "$tmp"
+    cp "$tmp/development-signer.sha256" "$tmp/development-signer.previous.sha256"
+    gh release upload dev "$tmp/development-signer.previous.sha256" --repo "$repo" --clobber
+    gh release delete-asset dev development-signer.sha256 --repo "$repo" --yes
+fi
+
 echo "Development signing key created and stored in repository Actions secrets."
 echo "Local recovery copy: $keystore"
 echo "Local password copy: $password_file"
