@@ -66,7 +66,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
     private volatile ComputerDetails computer;
     private ComputerManagerService.ApplistPoller poller;
-    private SpinnerDialog blockingLoadSpinner;
+    private volatile SpinnerDialog blockingLoadSpinner;
     private volatile String lastRawApplist;
     private volatile int lastRunningAppId;
     private volatile boolean suspendGridUpdates;
@@ -165,13 +165,13 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
                 return;
             }
 
-            startComputerUpdates();
-
+            // Serialize poller start with onResume()/onPause() on the main thread.
             runOnUiThread(() -> {
                 if (activityDestroyed || isFinishing() || isChangingConfigurations()) {
                     return;
                 }
 
+                startComputerUpdates();
                 try {
                     getSupportFragmentManager().beginTransaction()
                             .replace(R.id.appFragmentContainer, new AdapterFragment())
