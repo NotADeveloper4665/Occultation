@@ -22,7 +22,7 @@ import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.preferences.StreamSettings;
 import com.limelight.profiles.ProfilesManager;
-import com.limelight.ui.AdapterFragment;
+import com.limelight.ui.AppGridFragment;
 import com.limelight.ui.AdapterFragmentCallbacks;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.HelpLauncher;
@@ -197,8 +197,8 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
             helpButton.setVisibility(View.GONE);
         }
 
-        getFragmentManager().beginTransaction()
-            .replace(R.id.pcFragmentContainer, new AdapterFragment())
+        getSupportFragmentManager().beginTransaction()
+            .replace(R.id.pcFragmentContainer, new AppGridFragment())
             .commitAllowingStateLoss();
 
         noPcFoundLayout = findViewById(R.id.no_pc_found_layout);

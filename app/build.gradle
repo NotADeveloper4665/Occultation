@@ -97,9 +97,9 @@ android {
         debug {
             if (System.getenv('OCCULTATION_DEV_KEYSTORE')) {
                 storeFile file(System.getenv('OCCULTATION_DEV_KEYSTORE'))
-                storePassword 'android'
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
+                storePassword System.getenv('OCCULTATION_DEV_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('OCCULTATION_DEV_KEY_ALIAS')
+                keyPassword System.getenv('OCCULTATION_DEV_KEY_PASSWORD')
             }
         }
     }

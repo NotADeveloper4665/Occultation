@@ -2,8 +2,12 @@ package com.limelight;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.limelight.computers.ComputerManagerListener;
@@ -15,7 +19,7 @@ import com.limelight.nvstream.http.NvHTTP;
 import com.limelight.nvstream.http.PairingManager;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.profiles.ProfilesManager;
-import com.limelight.ui.AdapterFragment;
+import com.limelight.ui.AppGridFragment;
 import com.limelight.ui.AdapterFragmentCallbacks;
 import com.limelight.utils.CacheHelper;
 import com.limelight.utils.Dialog;
@@ -56,17 +60,18 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.xmlpull.v1.XmlPullParserException;
 
 public class AppView extends AppCompatActivity implements AdapterFragmentCallbacks {
-    private AppGridAdapter appGridAdapter;
+    private volatile AppGridAdapter appGridAdapter;
     private String uuidString;
     private ShortcutHelper shortcutHelper;
 
-    private ComputerDetails computer;
+    private volatile ComputerDetails computer;
     private ComputerManagerService.ApplistPoller poller;
-    private SpinnerDialog blockingLoadSpinner;
-    private String lastRawApplist;
-    private int lastRunningAppId;
-    private boolean suspendGridUpdates;
-    private boolean inForeground;
+    private boolean appListPollingStarted;
+    private volatile SpinnerDialog blockingLoadSpinner;
+    private volatile String lastRawApplist;
+    private volatile int lastRunningAppId;
+    private volatile boolean suspendGridUpdates;
+    private volatile boolean inForeground;
     private boolean showHiddenApps;
     private HashSet<Integer> hiddenAppIds = new HashSet<>();
 
@@ -89,84 +94,206 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
     public final static String NEW_PAIR_EXTRA = "NewPair";
     public final static String SHOW_HIDDEN_APPS_EXTRA = "ShowHiddenApps";
 
-    private ComputerManagerService.ComputerManagerBinder managerBinder;
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
+    private volatile ComputerManagerService.ComputerManagerBinder managerBinder;
+    private ExecutorService initializationExecutor;
+    private Future<?> initializationTask;
+    private boolean serviceBound;
+    private volatile boolean activityDestroyed;
+
+    private ServiceConnection serviceConnection;
+
+    private static final class AppViewServiceConnection implements ServiceConnection {
+        private final WeakReference<AppView> activityReference;
+
+        AppViewServiceConnection(AppView activity) {
+            activityReference = new WeakReference<>(activity);
+        }
+
+        @Override
         public void onServiceConnected(ComponentName className, IBinder binder) {
-            final ComputerManagerService.ComputerManagerBinder localBinder =
-                    ((ComputerManagerService.ComputerManagerBinder)binder);
-
-            // Wait in a separate thread to avoid stalling the UI
-            new Thread() {
-                @Override
-                public void run() {
-                    // Wait for the binder to be ready
-                    localBinder.waitForReady();
-
-                    // Get the computer object
-                    computer = localBinder.getComputer(uuidString);
-                    if (computer == null) {
-                        finish();
-                        return;
-                    }
-
-                    // Add a launcher shortcut for this PC (forced, since this is user interaction)
-                    shortcutHelper.createAppViewShortcut(computer, true, getIntent().getBooleanExtra(NEW_PAIR_EXTRA, false));
-                    shortcutHelper.reportComputerShortcutUsed(computer);
-
-                    try {
-                        appGridAdapter = new AppGridAdapter(AppView.this,
-                                PreferenceConfiguration.readPreferences(AppView.this),
-                                computer, localBinder.getUniqueId(),
-                                showHiddenApps);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        finish();
-                        return;
-                    }
-
-                    appGridAdapter.updateHiddenApps(hiddenAppIds, true);
-
-                    // Now make the binder visible. We must do this after appGridAdapter
-                    // is set to prevent us from reaching updateUiWithServerinfo() and
-                    // touching the appGridAdapter prior to initialization.
-                    managerBinder = localBinder;
-
-                    // Load the app grid with cached data (if possible).
-                    // This must be done _before_ startComputerUpdates()
-                    // so the initial serverinfo response can update the running
-                    // icon.
-                    populateAppGridWithCache();
-
-                    // Start updates
-                    startComputerUpdates();
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (isFinishing() || isChangingConfigurations()) {
-                                return;
-                            }
-
-                            // Despite my best efforts to catch all conditions that could
-                            // cause the activity to be destroyed when we try to commit
-                            // I haven't been able to, so we have this try-catch block.
-                            try {
-                                getFragmentManager().beginTransaction()
-                                        .replace(R.id.appFragmentContainer, new AdapterFragment())
-                                        .commitAllowingStateLoss();
-                            } catch (IllegalStateException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    });
-                }
-            }.start();
+            AppView activity = activityReference.get();
+            if (activity != null && !activity.activityDestroyed) {
+                activity.handleServiceConnected(binder);
+            }
         }
 
+        @Override
         public void onServiceDisconnected(ComponentName className) {
-            managerBinder = null;
+            AppView activity = activityReference.get();
+            if (activity != null && !activity.activityDestroyed) {
+                activity.handleServiceDisconnected();
+            }
         }
-    };
+    }
+
+    private void handleServiceConnected(IBinder binder) {
+        if (initializationExecutor == null || initializationExecutor.isShutdown()) {
+            return;
+        }
+
+        final ComputerManagerService.ComputerManagerBinder localBinder =
+                (ComputerManagerService.ComputerManagerBinder) binder;
+        final boolean isNewPair = getIntent().getBooleanExtra(NEW_PAIR_EXTRA, false);
+
+        if (initializationTask != null) {
+            initializationTask.cancel(true);
+        }
+        initializationTask = initializationExecutor.submit(
+                () -> initializeAppView(localBinder, isNewPair));
+    }
+
+    private void handleServiceDisconnected() {
+        managerBinder = null;
+        if (poller != null) {
+            poller.stop();
+            poller = null;
+        }
+        appListPollingStarted = false;
+        if (initializationTask != null) {
+            initializationTask.cancel(true);
+        }
+    }
+
+    private void initializeAppView(ComputerManagerService.ComputerManagerBinder localBinder,
+                                   boolean isNewPair) {
+        try {
+            // Wait for the discovery service before reading the computer list.
+            localBinder.waitForReady();
+            if (Thread.currentThread().isInterrupted() || activityDestroyed) {
+                return;
+            }
+
+            ComputerDetails connectedComputer = localBinder.getComputer(uuidString);
+            if (connectedComputer == null) {
+                finishOnUiThread();
+                return;
+            }
+            computer = connectedComputer;
+
+            // Add a launcher shortcut for this PC (forced, since this is user interaction).
+            shortcutHelper.createAppViewShortcut(computer, true, isNewPair);
+            shortcutHelper.reportComputerShortcutUsed(computer);
+
+            if (Thread.currentThread().isInterrupted() || activityDestroyed) {
+                return;
+            }
+
+            appGridAdapter = new AppGridAdapter(AppView.this,
+                    PreferenceConfiguration.readPreferences(AppView.this),
+                    computer, localBinder.getUniqueId(), showHiddenApps);
+            appGridAdapter.updateHiddenApps(hiddenAppIds, true);
+
+            // Publish the binder only after the adapter is ready.
+            managerBinder = localBinder;
+
+            // Load cached data before polling so the initial server response can
+            // correctly update the running-app indicator.
+            populateAppGridWithCache();
+            if (Thread.currentThread().isInterrupted() || activityDestroyed) {
+                return;
+            }
+
+            // Serialize poller start with onResume()/onPause() on the main thread.
+            runOnUiThread(() -> {
+                if (activityDestroyed || !inForeground || isFinishing() || isChangingConfigurations()) {
+                    return;
+                }
+
+                startComputerUpdates();
+                try {
+                    getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.appFragmentContainer, new AppGridFragment())
+                            .commitAllowingStateLoss();
+                } catch (IllegalStateException e) {
+                    LimeLog.warning("Unable to display the application list fragment", e);
+                }
+            });
+        } catch (Exception e) {
+            LimeLog.severe("Unable to initialize the application list", e);
+            finishOnUiThread();
+        }
+    }
+
+    private void finishOnUiThread() {
+        runOnUiThread(() -> {
+            if (!activityDestroyed && !isFinishing()) {
+                finish();
+            }
+        });
+    }
+
+    private void onComputerUpdated(final ComputerDetails details) {
+        if (activityDestroyed || !inForeground || suspendGridUpdates || details == null ||
+                details.uuid == null || !details.uuid.equalsIgnoreCase(uuidString)) {
+            return;
+        }
+
+        if (details.state == ComputerDetails.State.OFFLINE) {
+            runOnUiThread(() -> {
+                if (activityDestroyed) {
+                    return;
+                }
+                Toast.makeText(AppView.this, R.string.lost_connection, Toast.LENGTH_SHORT).show();
+                finish();
+            });
+            return;
+        }
+
+        if (details.state == ComputerDetails.State.ONLINE &&
+                details.pairState != PairingManager.PairState.PAIRED) {
+            runOnUiThread(() -> {
+                if (activityDestroyed) {
+                    return;
+                }
+                shortcutHelper.disableComputerShortcut(details,
+                        getResources().getString(R.string.scut_not_paired));
+                Toast.makeText(AppView.this, R.string.scut_not_paired, Toast.LENGTH_SHORT).show();
+                finish();
+            });
+            return;
+        }
+
+        // The app list is unchanged; only refresh the running-app marker if needed.
+        if (details.rawAppList == null || details.rawAppList.equals(lastRawApplist)) {
+            if (details.runningGameId != lastRunningAppId) {
+                lastRunningAppId = details.runningGameId;
+                updateUiWithServerinfo(details);
+            }
+            return;
+        }
+
+        lastRunningAppId = details.runningGameId;
+        try {
+            List<NvApp> appList = NvHTTP.getAppListByReader(new StringReader(details.rawAppList));
+            lastRawApplist = details.rawAppList;
+            updateUiWithAppList(appList);
+            updateUiWithServerinfo(details);
+
+            if (blockingLoadSpinner != null) {
+                blockingLoadSpinner.dismiss();
+                blockingLoadSpinner = null;
+            }
+        } catch (XmlPullParserException | IOException e) {
+            // Do not mark malformed data as handled; the next poll can retry it.
+            LimeLog.warning("Unable to parse the application list received from the host", e);
+        }
+    }
+
+    private static final class AppViewComputerManagerListener implements ComputerManagerListener {
+        private final WeakReference<AppView> activityReference;
+
+        AppViewComputerManagerListener(AppView activity) {
+            activityReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void notifyComputerUpdated(ComputerDetails details) {
+            AppView activity = activityReference.get();
+            if (activity != null && !activity.activityDestroyed) {
+                activity.onComputerUpdated(details);
+            }
+        }
+    }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
@@ -177,110 +304,39 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         // If appGridAdapter is initialized, let it know about the configuration change.
         // If not, it will pick it up when it initializes.
         if (appGridAdapter != null) {
-            // Update the app grid adapter to create grid items with the correct layout
             appGridAdapter.updateLayoutWithPreferences(this, this.prefConfig);
 
             try {
-                // Reinflate the app grid itself to pick up the layout change
-                getFragmentManager().beginTransaction()
-                        .replace(R.id.appFragmentContainer, new AdapterFragment())
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.appFragmentContainer, new AppGridFragment())
                         .commitAllowingStateLoss();
             } catch (IllegalStateException e) {
-                e.printStackTrace();
+                LimeLog.warning("Unable to refresh the application list after configuration change", e);
             }
         }
     }
 
     private void startComputerUpdates() {
-        // Don't start polling if we're not bound or in the foreground
-        if (managerBinder == null || !inForeground) {
+        // Don't start polling if we're not bound or in the foreground.
+        if (managerBinder == null || !inForeground || activityDestroyed) {
             return;
         }
 
-        managerBinder.startPolling(new ComputerManagerListener() {
-            @Override
-            public void notifyComputerUpdated(final ComputerDetails details) {
-                // Do nothing if updates are suspended
-                if (suspendGridUpdates) {
-                    return;
-                }
-
-                // Don't care about other computers
-                if (!details.uuid.equalsIgnoreCase(uuidString)) {
-                    return;
-                }
-
-                if (details.state == ComputerDetails.State.OFFLINE) {
-                    // The PC is unreachable now
-                    AppView.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            // Display a toast to the user and quit the activity
-                            Toast.makeText(AppView.this, R.string.lost_connection, Toast.LENGTH_SHORT).show();
-                            finish();
-                        }
-                    });
-
-                    return;
-                }
-
-                // Close immediately if the PC is no longer paired
-                if (details.state == ComputerDetails.State.ONLINE && details.pairState != PairingManager.PairState.PAIRED) {
-                    AppView.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            // Disable shortcuts referencing this PC for now
-                            shortcutHelper.disableComputerShortcut(details,
-                                    getResources().getString(R.string.scut_not_paired));
-
-                            // Display a toast to the user and quit the activity
-                            Toast.makeText(AppView.this, R.string.scut_not_paired, Toast.LENGTH_SHORT).show();
-                            finish();
-                        }
-                    });
-
-                    return;
-                }
-
-                // App list is the same or empty
-                if (details.rawAppList == null || details.rawAppList.equals(lastRawApplist)) {
-
-                    // Let's check if the running app ID changed
-                    if (details.runningGameId != lastRunningAppId) {
-                        // Update the currently running game using the app ID
-                        lastRunningAppId = details.runningGameId;
-                        updateUiWithServerinfo(details);
-                    }
-
-                    return;
-                }
-
-                lastRunningAppId = details.runningGameId;
-                lastRawApplist = details.rawAppList;
-
-                try {
-                    updateUiWithAppList(NvHTTP.getAppListByReader(new StringReader(details.rawAppList)));
-                    updateUiWithServerinfo(details);
-
-                    if (blockingLoadSpinner != null) {
-                        blockingLoadSpinner.dismiss();
-                        blockingLoadSpinner = null;
-                    }
-                } catch (XmlPullParserException | IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
+        managerBinder.startPolling(new AppViewComputerManagerListener(this));
 
         if (poller == null) {
             poller = managerBinder.createAppListPoller(computer);
         }
-        poller.start();
+        if (!appListPollingStarted) {
+            poller.start();
+            appListPollingStarted = true;
+        }
     }
 
     private void stopComputerUpdates() {
         if (poller != null) {
             poller.stop();
+            appListPollingStarted = false;
         }
 
         if (managerBinder != null) {
@@ -333,9 +389,20 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
         this.prefConfig = PreferenceConfiguration.readPreferences(this);
 
-        // Bind to the computer manager service
-        bindService(new Intent(this, ComputerManagerService.class), serviceConnection,
+        initializationExecutor = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "AppView-initialization");
+            thread.setDaemon(true);
+            return thread;
+        });
+
+        // Bind through a static connection wrapper so the framework cannot retain this Activity.
+        serviceConnection = new AppViewServiceConnection(this);
+        serviceBound = bindService(new Intent(this, ComputerManagerService.class), serviceConnection,
                 Service.BIND_AUTO_CREATE);
+        if (!serviceBound) {
+            LimeLog.severe("Unable to bind AppView to the computer manager service");
+            finish();
+        }
     }
 
     private void updateHiddenApps(boolean hideImmediately) {
@@ -362,8 +429,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
             LimeLog.info("Loaded applist from cache");
         } catch (IOException | XmlPullParserException e) {
             if (lastRawApplist != null) {
-                LimeLog.warning("Saved applist corrupted: "+lastRawApplist);
-                e.printStackTrace();
+                LimeLog.warning("Saved application-list cache is corrupted", e);
             }
             LimeLog.info("Loading applist from the network");
             // We'll need to load from the network
@@ -378,14 +444,27 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        activityDestroyed = true;
+        if (inForeground) {
+            stopComputerUpdates();
+        }
+        inForeground = false;
+
+        if (initializationTask != null) {
+            initializationTask.cancel(true);
+        }
+        if (initializationExecutor != null) {
+            initializationExecutor.shutdownNow();
+        }
+
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
 
         SpinnerDialog.closeDialogs(this);
         Dialog.closeDialogs();
-
-        if (managerBinder != null) {
-            unbindService(serviceConnection);
-        }
+        super.onDestroy();
     }
 
     @Override
@@ -626,6 +705,9 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         AppView.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                if (activityDestroyed || appGridAdapter == null) {
+                    return;
+                }
                 boolean updated = false;
 
                     // Look through our current app list to tag the running app
@@ -664,6 +746,9 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         AppView.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                if (activityDestroyed || appGridAdapter == null) {
+                    return;
+                }
                 boolean updated = false;
 
                 // First handle app updates and additions
