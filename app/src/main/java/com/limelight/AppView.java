@@ -19,8 +19,8 @@ import com.limelight.nvstream.http.NvHTTP;
 import com.limelight.nvstream.http.PairingManager;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.profiles.ProfilesManager;
-import com.limelight.ui.AdapterFragment;
-import com.limelight.ui.AdapterFragmentCallbacks;
+import com.limelight.ui.AppGridFragment;
+import com.limelight.ui.AppGridFragmentCallbacks;
 import com.limelight.utils.CacheHelper;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.ServerHelper;
@@ -59,7 +59,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.xmlpull.v1.XmlPullParserException;
 
-public class AppView extends AppCompatActivity implements AdapterFragmentCallbacks {
+public class AppView extends AppCompatActivity implements AppGridFragmentCallbacks {
     private volatile AppGridAdapter appGridAdapter;
     private String uuidString;
     private ShortcutHelper shortcutHelper;
@@ -174,7 +174,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
                 startComputerUpdates();
                 try {
                     getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.appFragmentContainer, new AdapterFragment())
+                            .replace(R.id.appFragmentContainer, new AppGridFragment())
                             .commitAllowingStateLoss();
                 } catch (IllegalStateException e) {
                     LimeLog.warning("Unable to display the application list fragment", e);
@@ -280,7 +280,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
             try {
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.appFragmentContainer, new AdapterFragment())
+                        .replace(R.id.appFragmentContainer, new AppGridFragment())
                         .commitAllowingStateLoss();
             } catch (IllegalStateException e) {
                 LimeLog.warning("Unable to refresh the application list after configuration change", e);
@@ -787,7 +787,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
     }
 
     @Override
-    public int getAdapterFragmentLayoutId() {
+    public int getAppGridFragmentLayoutId() {
         return PreferenceConfiguration.readPreferences(AppView.this).smallIconMode ?
                     R.layout.app_grid_view_small : R.layout.app_grid_view;
     }
