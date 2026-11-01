@@ -20,7 +20,7 @@ import com.limelight.nvstream.http.PairingManager;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.profiles.ProfilesManager;
 import com.limelight.ui.AppGridFragment;
-import com.limelight.ui.AppGridFragmentCallbacks;
+import com.limelight.ui.AdapterFragmentCallbacks;
 import com.limelight.utils.CacheHelper;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.ServerHelper;
@@ -59,7 +59,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.xmlpull.v1.XmlPullParserException;
 
-public class AppView extends AppCompatActivity implements AppGridFragmentCallbacks {
+public class AppView extends AppCompatActivity implements AdapterFragmentCallbacks {
     private volatile AppGridAdapter appGridAdapter;
     private String uuidString;
     private ShortcutHelper shortcutHelper;
@@ -787,7 +787,7 @@ public class AppView extends AppCompatActivity implements AppGridFragmentCallbac
     }
 
     @Override
-    public int getAppGridFragmentLayoutId() {
+    public int getAdapterFragmentLayoutId() {
         return PreferenceConfiguration.readPreferences(AppView.this).smallIconMode ?
                     R.layout.app_grid_view_small : R.layout.app_grid_view;
     }
