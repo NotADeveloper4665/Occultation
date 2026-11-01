@@ -15,9 +15,11 @@ public class PortraitSurfaceTransformTest {
                 PortraitSurfaceTransform.landscapeToPortrait(1920, 1080, 1920, 1080);
         assertEquals(0, topLeft.x, 0.001);
         assertEquals(1920, topLeft.y, 0.001);
+        assertEquals(0, topRight.x, 0.001);
         assertEquals(0, topRight.y, 0.001);
         assertEquals(1080, bottomLeft.x, 0.001);
-        assertEquals(1920, bottomRight.x, 0.001);
+        assertEquals(1920, bottomLeft.y, 0.001);
+        assertEquals(1080, bottomRight.x, 0.001);
         assertEquals(0, bottomRight.y, 0.001);
     }
 
