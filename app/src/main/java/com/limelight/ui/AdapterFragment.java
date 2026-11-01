@@ -1,13 +1,14 @@
 package com.limelight.ui;
 
-
-import android.app.Activity;
-import android.app.Fragment;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
+
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 
 import com.limelight.R;
 
@@ -15,10 +16,13 @@ public class AdapterFragment extends Fragment {
     private AdapterFragmentCallbacks callbacks;
 
     @Override
-    public void onAttach(Activity activity) {
-        super.onAttach(activity);
+    public void onAttach(Context context) {
+        super.onAttach(context);
 
-        callbacks = (AdapterFragmentCallbacks) activity;
+        if (!(context instanceof AdapterFragmentCallbacks)) {
+            throw new IllegalStateException("Host activity must implement AdapterFragmentCallbacks");
+        }
+        callbacks = (AdapterFragmentCallbacks) context;
     }
 
     @Override
@@ -28,8 +32,14 @@ public class AdapterFragment extends Fragment {
     }
 
     @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        callbacks.receiveAbsListView(getView().findViewById(R.id.fragmentView));
+    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        callbacks.receiveAbsListView(view.findViewById(R.id.fragmentView));
+    }
+
+    @Override
+    public void onDetach() {
+        callbacks = null;
+        super.onDetach();
     }
 }

@@ -68,6 +68,7 @@ public class ComputerManagerService extends Service {
 
     private DiscoveryService.DiscoveryBinder discoveryBinder;
     private final ServiceConnection discoveryServiceConnection = new ServiceConnection() {
+        @Override
         public void onServiceConnected(ComponentName className, IBinder binder) {
             synchronized (discoveryServiceConnection) {
                 DiscoveryService.DiscoveryBinder privateBinder = ((DiscoveryService.DiscoveryBinder)binder);
@@ -81,6 +82,7 @@ public class ComputerManagerService extends Service {
             }
         }
 
+        @Override
         public void onServiceDisconnected(ComponentName className) {
             discoveryBinder = null;
         }
@@ -232,12 +234,9 @@ public class ComputerManagerService extends Service {
                         discoveryServiceConnection.wait(1000);
                     }
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
-
-                    // InterruptedException clears the thread's interrupt status. Since we can't
-                    // handle that here, we will re-interrupt the thread to set the interrupt
-                    // status back to true.
+                    // Preserve cancellation; the waiting task must stop promptly.
                     Thread.currentThread().interrupt();
+                    return;
                 }
             }
         }
@@ -247,12 +246,9 @@ public class ComputerManagerService extends Service {
                 try {
                     Thread.sleep(250);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
-
-                    // InterruptedException clears the thread's interrupt status. Since we can't
-                    // handle that here, we will re-interrupt the thread to set the interrupt
-                    // status back to true.
+                    // Do not spin while the thread's interrupt flag is set.
                     Thread.currentThread().interrupt();
+                    return;
                 }
             }
         }
@@ -460,19 +456,13 @@ public class ComputerManagerService extends Service {
                         LimeLog.warning("Auto-discovered PC failed to respond: "+details);
                     }
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
-
-                    // InterruptedException clears the thread's interrupt status. Since we can't
-                    // handle that here, we will re-interrupt the thread to set the interrupt
-                    // status back to true.
                     Thread.currentThread().interrupt();
                 }
             }
 
             @Override
             public void notifyDiscoveryFailure(Exception e) {
-                LimeLog.severe("mDNS discovery failed");
-                e.printStackTrace();
+                LimeLog.severe("mDNS discovery failed", e);
             }
         };
     }
@@ -613,7 +603,7 @@ public class ComputerManagerService extends Service {
 
             return newDetails;
         } catch (XmlPullParserException e) {
-            e.printStackTrace();
+            LimeLog.warning("Unable to parse discovered computer details", e);
             return null;
         } catch (IOException e) {
             return null;
@@ -942,7 +932,7 @@ public class ComputerManagerService extends Service {
                                 ) {
                                     CacheHelper.writeStringToOutputStream(cacheOut, appList);
                                 } catch (IOException e) {
-                                    e.printStackTrace();
+                                    LimeLog.warning("Unable to cache the host application list", e);
                                 }
 
                                 // Reset empty count if it wasn't empty this time
@@ -964,9 +954,11 @@ public class ComputerManagerService extends Service {
                                 LimeLog.warning("Null app list received from "+computer.uuid);
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            LimeLog.warning("Unable to retrieve the host application list for " +
+                                    computer.name, e);
                         } catch (XmlPullParserException e) {
-                            e.printStackTrace();
+                            LimeLog.warning("Unable to parse the host application list for " +
+                                    computer.name, e);
                         }
                     } while (waitPollingDelay());
                 }
