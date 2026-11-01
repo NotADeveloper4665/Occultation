@@ -100,37 +100,59 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
     private boolean serviceBound;
     private volatile boolean activityDestroyed;
 
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
+    private ServiceConnection serviceConnection;
+
+    private static final class AppViewServiceConnection implements ServiceConnection {
+        private final WeakReference<AppView> activityReference;
+
+        AppViewServiceConnection(AppView activity) {
+            activityReference = new WeakReference<>(activity);
+        }
+
         @Override
         public void onServiceConnected(ComponentName className, IBinder binder) {
-            if (activityDestroyed || initializationExecutor == null || initializationExecutor.isShutdown()) {
-                return;
+            AppView activity = activityReference.get();
+            if (activity != null && !activity.activityDestroyed) {
+                activity.handleServiceConnected(binder);
             }
-
-            final ComputerManagerService.ComputerManagerBinder localBinder =
-                    (ComputerManagerService.ComputerManagerBinder) binder;
-            final boolean isNewPair = getIntent().getBooleanExtra(NEW_PAIR_EXTRA, false);
-
-            if (initializationTask != null) {
-                initializationTask.cancel(true);
-            }
-            initializationTask = initializationExecutor.submit(
-                    () -> initializeAppView(localBinder, isNewPair));
         }
 
         @Override
         public void onServiceDisconnected(ComponentName className) {
-            managerBinder = null;
-            if (poller != null) {
-                poller.stop();
-                poller = null;
-            }
-            appListPollingStarted = false;
-            if (initializationTask != null) {
-                initializationTask.cancel(true);
+            AppView activity = activityReference.get();
+            if (activity != null && !activity.activityDestroyed) {
+                activity.handleServiceDisconnected();
             }
         }
-    };
+    }
+
+    private void handleServiceConnected(IBinder binder) {
+        if (initializationExecutor == null || initializationExecutor.isShutdown()) {
+            return;
+        }
+
+        final ComputerManagerService.ComputerManagerBinder localBinder =
+                (ComputerManagerService.ComputerManagerBinder) binder;
+        final boolean isNewPair = getIntent().getBooleanExtra(NEW_PAIR_EXTRA, false);
+
+        if (initializationTask != null) {
+            initializationTask.cancel(true);
+        }
+        initializationTask = initializationExecutor.submit(
+                () -> initializeAppView(localBinder, isNewPair));
+    }
+
+    private void handleServiceDisconnected() {
+        managerBinder = null;
+        if (poller != null) {
+            poller.stop();
+            poller = null;
+        }
+        appListPollingStarted = false;
+        if (initializationTask != null) {
+            initializationTask.cancel(true);
+        }
+    }
 
     private void initializeAppView(ComputerManagerService.ComputerManagerBinder localBinder,
                                    boolean isNewPair) {
@@ -373,7 +395,8 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
             return thread;
         });
 
-        // Bind to the computer manager service.
+        // Bind through a static connection wrapper so the framework cannot retain this Activity.
+        serviceConnection = new AppViewServiceConnection(this);
         serviceBound = bindService(new Intent(this, ComputerManagerService.class), serviceConnection,
                 Service.BIND_AUTO_CREATE);
         if (!serviceBound) {
