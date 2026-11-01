@@ -66,11 +66,12 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
     private volatile ComputerDetails computer;
     private ComputerManagerService.ApplistPoller poller;
+    private boolean appListPollingStarted;
     private volatile SpinnerDialog blockingLoadSpinner;
     private volatile String lastRawApplist;
     private volatile int lastRunningAppId;
     private volatile boolean suspendGridUpdates;
-    private boolean inForeground;
+    private volatile boolean inForeground;
     private boolean showHiddenApps;
     private HashSet<Integer> hiddenAppIds = new HashSet<>();
 
@@ -120,6 +121,11 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         @Override
         public void onServiceDisconnected(ComponentName className) {
             managerBinder = null;
+            if (poller != null) {
+                poller.stop();
+                poller = null;
+            }
+            appListPollingStarted = false;
             if (initializationTask != null) {
                 initializationTask.cancel(true);
             }
@@ -195,7 +201,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
     }
 
     private void onComputerUpdated(final ComputerDetails details) {
-        if (activityDestroyed || suspendGridUpdates || details == null ||
+        if (activityDestroyed || !inForeground || suspendGridUpdates || details == null ||
                 details.uuid == null || !details.uuid.equalsIgnoreCase(uuidString)) {
             return;
         }
@@ -299,12 +305,16 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         if (poller == null) {
             poller = managerBinder.createAppListPoller(computer);
         }
-        poller.start();
+        if (!appListPollingStarted) {
+            poller.start();
+            appListPollingStarted = true;
+        }
     }
 
     private void stopComputerUpdates() {
         if (poller != null) {
             poller.stop();
+            appListPollingStarted = false;
         }
 
         if (managerBinder != null) {
