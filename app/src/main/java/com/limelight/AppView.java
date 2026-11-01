@@ -173,7 +173,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
             // Serialize poller start with onResume()/onPause() on the main thread.
             runOnUiThread(() -> {
-                if (activityDestroyed || isFinishing() || isChangingConfigurations()) {
+                if (activityDestroyed || !inForeground || isFinishing() || isChangingConfigurations()) {
                     return;
                 }
 
