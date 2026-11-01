@@ -412,6 +412,9 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
     @Override
     protected void onDestroy() {
         activityDestroyed = true;
+        if (inForeground) {
+            stopComputerUpdates();
+        }
         inForeground = false;
 
         if (initializationTask != null) {
@@ -420,8 +423,6 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         if (initializationExecutor != null) {
             initializationExecutor.shutdownNow();
         }
-
-        stopComputerUpdates();
 
         if (serviceBound) {
             unbindService(serviceConnection);
@@ -671,6 +672,9 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         AppView.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                if (activityDestroyed || appGridAdapter == null) {
+                    return;
+                }
                 boolean updated = false;
 
                     // Look through our current app list to tag the running app
@@ -709,6 +713,9 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         AppView.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                if (activityDestroyed || appGridAdapter == null) {
+                    return;
+                }
                 boolean updated = false;
 
                 // First handle app updates and additions
