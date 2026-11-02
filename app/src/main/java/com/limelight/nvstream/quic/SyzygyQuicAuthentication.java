@@ -44,9 +44,21 @@ public final class SyzygyQuicAuthentication {
         if (!"RSA".equalsIgnoreCase(privateKey.getAlgorithm())) {
             throw new GeneralSecurityException("SQ1 currently requires an RSA client key");
         }
+        // Python's base64.b64decode(validate=True) on the host rejects whitespace,
+        // non-alphabet characters, and malformed padding. Apply the same rule here.
+        if (challengeBase64.length() != 44 || challengeBase64.charAt(43) != '=') {
+            throw new GeneralSecurityException("Invalid SQ1 challenge encoding");
+        }
+        for (int i = 0; i < 43; i++) {
+            char c = challengeBase64.charAt(i);
+            boolean valid = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                    (c >= '0' && c <= '9') || c == '+' || c == '/';
+            if (!valid) throw new GeneralSecurityException("Invalid SQ1 challenge encoding");
+        }
+
         final byte[] challenge;
         try {
-            challenge = Base64.decode(challengeBase64, Base64.DEFAULT);
+            challenge = Base64.decode(challengeBase64, Base64.NO_WRAP);
         } catch (IllegalArgumentException e) {
             throw new GeneralSecurityException("Invalid SQ1 challenge encoding", e);
         }
