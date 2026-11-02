@@ -10,7 +10,7 @@ import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
-import java.util.Base64;
+import android.util.Base64;
 
 /**
  * SQ1 client authentication primitives shared with Syzygy's experimental QUIC relay.
@@ -46,7 +46,7 @@ public final class SyzygyQuicAuthentication {
         }
         final byte[] challenge;
         try {
-            challenge = Base64.getDecoder().decode(challengeBase64);
+            challenge = Base64.decode(challengeBase64, Base64.DEFAULT);
         } catch (IllegalArgumentException e) {
             throw new GeneralSecurityException("Invalid SQ1 challenge encoding", e);
         }
@@ -61,7 +61,7 @@ public final class SyzygyQuicAuthentication {
         Signature signer = Signature.getInstance("SHA256withRSA");
         signer.initSign(privateKey);
         signer.update(signed);
-        String signature = Base64.getEncoder().encodeToString(signer.sign());
+        String signature = Base64.encodeToString(signer.sign(), Base64.NO_WRAP);
 
         JsonObject response = new JsonObject();
         response.addProperty("certificate", certificatePem);
