@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Signature;
+import java.util.Arrays;
 import java.util.Base64;
 
 import static org.junit.Assert.*;
@@ -53,6 +54,22 @@ public class SyzygyQuicAuthenticationTest {
                     Base64.getEncoder().encodeToString(new byte[31]), "cert",
                     generator.generateKeyPair().getPrivate());
             fail("Expected invalid challenge rejection");
+        } catch (java.security.GeneralSecurityException expected) {
+            // Expected.
+        }
+    }
+
+
+    @Test
+    public void rejectsNonBase64ChallengeCharacters() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        char[] invalid = new char[44];
+        Arrays.fill(invalid, '!');
+        try {
+            SyzygyQuicAuthentication.clientProofLine(
+                    new String(invalid), "cert", generator.generateKeyPair().getPrivate());
+            fail("Expected invalid challenge encoding rejection");
         } catch (java.security.GeneralSecurityException expected) {
             // Expected.
         }
