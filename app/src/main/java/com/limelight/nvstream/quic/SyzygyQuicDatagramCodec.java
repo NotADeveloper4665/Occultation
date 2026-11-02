@@ -87,10 +87,12 @@ public final class SyzygyQuicDatagramCodec {
         if (frame == null || frame.length < HEADER_BYTES) return null;
 
         ByteBuffer input = ByteBuffer.wrap(frame).order(ByteOrder.BIG_ENDIAN);
-        int port = Short.toUnsignedInt(input.getShort());
-        long sequence = Integer.toUnsignedLong(input.getInt());
-        int index = Short.toUnsignedInt(input.getShort());
-        int count = Short.toUnsignedInt(input.getShort());
+        // Avoid Short/Integer unsigned helpers: Android added these methods in API 26,
+        // but Occultation still supports API 21.
+        int port = input.getShort() & 0xffff;
+        long sequence = input.getInt() & 0xffffffffL;
+        int index = input.getShort() & 0xffff;
+        int count = input.getShort() & 0xffff;
         int chunkLength = input.remaining();
         if (count < 1 || count > MAX_FRAGMENTS || index >= count ||
                 chunkLength > MAX_FRAGMENT_BYTES) return null;
