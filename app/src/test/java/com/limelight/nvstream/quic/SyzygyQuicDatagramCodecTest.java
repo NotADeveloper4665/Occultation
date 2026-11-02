@@ -1,6 +1,8 @@
 package com.limelight.nvstream.quic;
 
 import org.junit.Test;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.List;
 import static org.junit.Assert.*;
 
@@ -50,6 +52,23 @@ public class SyzygyQuicDatagramCodecTest {
         invalidCount[8] = 0;
         invalidCount[9] = 67;
         assertNull(codec.accept(invalidCount, 0));
+    }
+
+
+    @Test public void decodesUnsignedHeaderFieldsWithoutApi26Helpers() {
+        SyzygyQuicDatagramCodec codec = new SyzygyQuicDatagramCodec();
+        byte[] frame = ByteBuffer.allocate(11).order(ByteOrder.BIG_ENDIAN)
+                .putShort((short) 0xffff)
+                .putInt(0xffffffff)
+                .putShort((short) 0)
+                .putShort((short) 1)
+                .put((byte) 0x5a)
+                .array();
+
+        SyzygyQuicDatagramCodec.Packet packet = codec.accept(frame, 0);
+        assertNotNull(packet);
+        assertEquals(65535, packet.port);
+        assertArrayEquals(new byte[] {(byte) 0x5a}, packet.payload);
     }
 
     @Test public void emptyDatagramIsRepresentedByOneHeaderOnlyFragment() {
