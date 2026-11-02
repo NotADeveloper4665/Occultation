@@ -4,6 +4,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
@@ -14,6 +17,8 @@ import java.util.Base64;
 
 import static org.junit.Assert.*;
 
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 33)
 public class SyzygyQuicAuthenticationTest {
     @Test
     public void helloUsesSq1JsonLine() {
