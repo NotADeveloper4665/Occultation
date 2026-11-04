@@ -1099,7 +1099,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private boolean isMediaTekFrontBufferDevice() {
         String manufacturer = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT);
         String hardware = Build.HARDWARE == null ? "" : Build.HARDWARE.toLowerCase(java.util.Locale.ROOT);
-        return manufacturer.contains("mediatek") || hardware.startsWith("mt");
+        String board = Build.BOARD == null ? "" : Build.BOARD.toLowerCase(java.util.Locale.ROOT);
+        return manufacturer.contains("mediatek") || hardware.startsWith("mt") || board.startsWith("mt");
     }
 
     private void setPreferredOrientationForActivity() {
