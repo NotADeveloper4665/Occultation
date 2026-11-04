@@ -70,14 +70,6 @@ KEY_LOW_LATENCY and PARAMETER_KEY_LOW_LATENCY are used on API 30+ through the ex
 ordered configure/retry path. Android has no portable decoder slice-thread count key;
 no invented MediaFormat key is added.
 
-Arm Accuracy Super Resolution is a temporal upscaler. Its documented inputs include
-rendered color, depth, motion vectors, jitter and frame/camera parameters. A decoded
-Moonlight desktop video supplies color but not the original game's depth, motion or
-jitter. Input precondition checks and the availability UI are added. The ASR library
-and dispatch are not integrated, and no fake constant depth or motion data is
-supplied. An actual ASR path needs a host/game metadata protocol and a compatible
-capture source; optical-flow vectors alone would not supply all required data.
-
 RIFE stream interpolation remains separate from this renderer: no generated RIFE
 frames are inserted by this change. Public release publication is not part of this
 experimental branch update.
