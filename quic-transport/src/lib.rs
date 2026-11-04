@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     sync::{atomic::{AtomicI32, Ordering}, Arc, Mutex},
     time::Duration,
 };
@@ -177,8 +177,12 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeC
             .map_err(|e| e.to_string())?;
         let config = make_client_config(pin)?;
         let (endpoint, connection, auth) = runtime.block_on(async {
-            let mut endpoint = Endpoint::client(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0))
-                .map_err(|e| e.to_string())?;
+            let bind_address = if address.is_ipv6() {
+                SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0)
+            } else {
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0)
+            };
+            let mut endpoint = Endpoint::client(bind_address).map_err(|e| e.to_string())?;
             endpoint.set_default_client_config(config);
             let connecting = endpoint.connect(address, "syzygy").map_err(|e| e.to_string())?;
             let connection = timeout(Duration::from_secs(8), connecting).await
@@ -362,8 +366,10 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeS
         let client = client_from_handle(handle)?;
         let stream = client.streams.lock().map_err(|_| "QUIC stream map poisoned")?
             .get(&stream_id).cloned().ok_or("Unknown QUIC stream")?;
-        let mut send = stream.send.blocking_lock();
-        send.finish().map_err(|e| e.to_string())
+        client.runtime.block_on(async {
+            let mut send = stream.send.lock().await;
+            send.finish().map_err(|e| e.to_string())
+        })
     })();
     match result {
         Ok(()) => 1,
