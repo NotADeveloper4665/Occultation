@@ -205,13 +205,16 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
                 .setName("Occultation-FrontBuffer")
                 .setParent(parentSurfaceControl)
                 .build();
-        try (SurfaceControl.Transaction transaction = new SurfaceControl.Transaction()) {
+        SurfaceControl.Transaction transaction = new SurfaceControl.Transaction();
+        try {
             transaction.setBufferSize(childSurfaceControl, bufferWidth, bufferHeight);
             transaction.setPosition(childSurfaceControl, 0f, 0f);
             transaction.setWindowCrop(childSurfaceControl, new Rect(0, 0, bufferWidth, bufferHeight));
             transaction.setLayer(childSurfaceControl, Integer.MAX_VALUE - 1);
             transaction.show(childSurfaceControl);
             transaction.apply();
+        } finally {
+            transaction.close();
         }
     }
 
@@ -300,7 +303,7 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
     }
 
     private void releaseBuffer(BufferSlot slot, SyncFence fence) {
-        releaseWorkers.execute(() -> {
+        Runnable releaseTask = () -> {
             try {
                 if (fence != null && fence.isValid()) fence.awaitForever();
             } catch (RuntimeException error) {
@@ -312,7 +315,12 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
                     poolLock.notifyAll();
                 }
             }
-        });
+        };
+        try {
+            releaseWorkers.execute(releaseTask);
+        } catch (java.util.concurrent.RejectedExecutionException ignored) {
+            releaseTask.run();
+        }
     }
 
     private SyncFence createPresentationFence() {
@@ -367,11 +375,13 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
             FrontBufferHardwareBridge.nativeUnbindFbo();
 
             SyncFence acquireFence = createPresentationFence();
-            try (SurfaceControl.Transaction transaction = new SurfaceControl.Transaction()) {
+            SurfaceControl.Transaction transaction = new SurfaceControl.Transaction();
+            try {
                 transaction.setBuffer(childSurfaceControl, slot.buffer, acquireFence,
                         releaseFence -> releaseBuffer(slot, releaseFence));
                 transaction.apply();
             } finally {
+                transaction.close();
                 if (acquireFence != null) acquireFence.close();
             }
         } catch (Exception error) {
@@ -389,9 +399,12 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
         if (!closed.compareAndSet(false, true)) return;
         FutureTask<Void> cleanup = new FutureTask<>(() -> {
             if (childSurfaceControl != null) {
-                try (SurfaceControl.Transaction transaction = new SurfaceControl.Transaction()) {
+                SurfaceControl.Transaction transaction = new SurfaceControl.Transaction();
+                try {
                     transaction.remove(childSurfaceControl);
                     transaction.apply();
+                } finally {
+                    transaction.close();
                 }
                 childSurfaceControl.release();
                 childSurfaceControl = null;
