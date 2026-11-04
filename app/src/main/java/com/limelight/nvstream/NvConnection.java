@@ -489,7 +489,7 @@ public class NvConnection {
                         .getBoolean("checkbox_syzygy_quic", false);
                 if (requestSyzygyQuic) {
                     try {
-                        quicTunnel = SyzygyQuicTunnel.connect(connectionAddress, context.serverCert, cryptoProvider);
+                        quicTunnel = SyzygyQuicTunnel.connect(connectionAddress, context.serverAddress.port, context.serverCert, cryptoProvider);
                         connectionAddress = SyzygyQuicTunnel.loopbackAddress();
                         rtspSessionUrl = quicTunnel.rewriteRtspUrl(rtspSessionUrl);
                         LimeLog.info("Syzygy QUIC transport authenticated; routing Moonlight-core through loopback");
