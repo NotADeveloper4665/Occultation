@@ -43,6 +43,7 @@ import com.limelight.profiles.ProfilesManager;
 import com.limelight.ui.ExternalControllerView;
 import com.limelight.ui.GameGestures;
 import com.limelight.ui.StreamView;
+import com.limelight.ui.PortraitSurfaceTransform;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.ExternalDisplayControlActivity;
 import com.limelight.utils.MouseModeOption;
@@ -207,6 +208,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private boolean waitingForAllModifiersUp = false;
     private int specialKeyCode = KeyEvent.KEYCODE_UNKNOWN;
     private StreamView streamView;
+    private volatile boolean portraitInputTransformActive;
     private long synthTouchDownTime = 0;
 
     private boolean pendingDrag = false;
@@ -379,6 +381,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Read the stream preferences
         prefConfig = PreferenceConfiguration.readPreferences(this);
+        portraitInputTransformActive = prefConfig.enableFrontBufferRendering &&
+                Build.VERSION.SDK_INT >= 33 && isMediaTekFrontBufferDevice();
         tombstonePrefs = Game.this.getSharedPreferences("DecoderTombstone", 0);
 
         Display currentDisplay = null;
@@ -1092,7 +1096,17 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         prefConfig.onscreenController= virtualController.switchShowHide() != 0;
     }
 
+    private boolean isMediaTekFrontBufferDevice() {
+        String manufacturer = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT);
+        String hardware = Build.HARDWARE == null ? "" : Build.HARDWARE.toLowerCase(java.util.Locale.ROOT);
+        return manufacturer.contains("mediatek") || hardware.startsWith("mt");
+    }
+
     private void setPreferredOrientationForActivity() {
+        if (portraitInputTransformActive) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT);
+            return;
+        }
         Display display = getActiveDisplay(Game.this, prefConfig);
 
         // For semi-square displays, we use more complex logic to determine which orientation to use (if any)
@@ -2478,6 +2492,14 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         normalizedX /= streamView.getWidth();
         normalizedY /= streamView.getHeight();
 
+        if (portraitInputTransformActive) {
+            PortraitSurfaceTransform.Point landscapePoint = PortraitSurfaceTransform.portraitToLandscape(
+                    normalizedX * streamView.getWidth(), normalizedY * streamView.getHeight(),
+                    streamView.getWidth(), streamView.getHeight());
+            normalizedX = landscapePoint.x / streamView.getHeight();
+            normalizedY = landscapePoint.y / streamView.getWidth();
+        }
+
         return new float[] { normalizedX, normalizedY };
     }
 
@@ -3757,7 +3779,20 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // Update GameManager state to indicate we're "loading" while connecting
             UiHelper.notifyStreamConnecting(Game.this);
 
-            decoderRenderer.setRenderTarget(holder.getSurface());
+            Object parentSurfaceControl = null;
+            if (Build.VERSION.SDK_INT >= 29) {
+                try {
+                    parentSurfaceControl = streamView.getClass().getMethod("getSurfaceControl").invoke(streamView);
+                } catch (Exception error) {
+                    LimeLog.info("SurfaceControl parent unavailable for HardwareBuffer rendering: " + error);
+                }
+            }
+            boolean oldPortraitTransform = portraitInputTransformActive;
+            decoderRenderer.setRenderTarget(holder.getSurface(), parentSurfaceControl);
+            portraitInputTransformActive = decoderRenderer.isPortraitInputTransformActive();
+            if (oldPortraitTransform != portraitInputTransformActive) {
+                setPreferredOrientationForActivity();
+            }
             conn.start(new AndroidAudioRenderer(Game.this, prefConfig.enableAudioFx, prefConfig.wanOptimization),
                     decoderRenderer, Game.this);
         }
