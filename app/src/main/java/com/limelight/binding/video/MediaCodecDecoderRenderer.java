@@ -437,6 +437,10 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     }
 
     public void setRenderTarget(Surface renderTarget) {
+        setRenderTarget(renderTarget, null);
+    }
+
+    public void setRenderTarget(Surface renderTarget, Object parentSurfaceControl) {
         if (frontBufferRenderer != null) {
             frontBufferRenderer.close();
             frontBufferRenderer = null;
@@ -444,7 +448,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         this.renderTarget = renderTarget;
         if (renderTarget != null && prefs != null && prefs.enableFrontBufferRendering && !prefs.enableHdr) {
             try {
-                frontBufferRenderer = new FrontBufferRenderer(renderTarget, prefs.width, prefs.height,
+                frontBufferRenderer = new FrontBufferRenderer(renderTarget, parentSurfaceControl,
+                        prefs.width, prefs.height,
                         message -> LimeLog.info("Front-buffer renderer: " + message));
                 this.renderTarget = frontBufferRenderer.decoderSurface();
             } catch (Exception | LinkageError error) {
@@ -453,6 +458,10 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                 this.renderTarget = renderTarget;
             }
         }
+    }
+
+    public boolean isPortraitInputTransformActive() {
+        return frontBufferRenderer != null && frontBufferRenderer.isPortraitTransformActive();
     }
 
     public MediaCodecDecoderRenderer(Activity activity, PreferenceConfiguration prefs,
