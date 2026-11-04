@@ -43,6 +43,7 @@ import com.limelight.nvstream.http.NvHTTP;
 import com.limelight.nvstream.http.PairingManager;
 import com.limelight.nvstream.input.MouseButtonPacket;
 import com.limelight.nvstream.jni.MoonBridge;
+import com.limelight.nvstream.quic.SyzygyQuicTunnel;
 
 public class NvConnection {
     private volatile boolean wanStopping;
