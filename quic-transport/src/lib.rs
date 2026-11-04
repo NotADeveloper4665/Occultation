@@ -104,7 +104,7 @@ fn make_client_config(pin: [u8; 32]) -> Result<quinn::ClientConfig, String> {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let algorithms = provider.signature_verification_algorithms;
     let mut tls = rustls::ClientConfig::builder_with_provider(provider)
-        .with_safe_default_protocol_versions()
+        .with_protocol_versions(&[&rustls::version::TLS13])
         .map_err(|e| e.to_string())?
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(PinnedVerifier { pin, algorithms }))
