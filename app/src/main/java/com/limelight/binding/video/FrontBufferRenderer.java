@@ -11,6 +11,7 @@ import android.opengl.GLES20;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
+import androidx.core.util.Consumer;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
@@ -20,7 +21,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 /**
  * Experimental SurfaceTexture-to-EGL presenter. It uses EGL_KHR_mutable_render_buffer
