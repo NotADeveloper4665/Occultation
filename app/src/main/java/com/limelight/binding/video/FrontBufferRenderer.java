@@ -85,7 +85,8 @@ public final class FrontBufferRenderer implements AutoCloseable {
     private static boolean isMediaTekDevice() {
         String manufacturer = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(Locale.ROOT);
         String hardware = Build.HARDWARE == null ? "" : Build.HARDWARE.toLowerCase(Locale.ROOT);
-        return manufacturer.contains("mediatek") || hardware.startsWith("mt");
+        String board = Build.BOARD == null ? "" : Build.BOARD.toLowerCase(Locale.ROOT);
+        return manufacturer.contains("mediatek") || hardware.startsWith("mt") || board.startsWith("mt");
     }
 
     private static String probeRenderer(Surface surface) {
