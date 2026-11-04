@@ -18,6 +18,7 @@ using GetNativeClientBufferFn = EGLClientBuffer (*)(const AHardwareBuffer*);
 using CreateImageKhrFn = EGLImageKHR (*)(EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, const EGLint*);
 using DestroyImageKhrFn = EGLBoolean (*)(EGLDisplay, EGLImageKHR);
 using ImageTargetRenderbufferFn = void (*)(GLenum, EGLImageKHR);
+using HardwareBufferReferenceFn = void (*)(AHardwareBuffer*);
 
 struct HardwareBufferFbo {
     AHardwareBuffer* buffer;
@@ -42,6 +43,10 @@ Java_com_limelight_binding_video_FrontBufferHardwareBridge_nativeCreateFbo(
 
     auto fromJava = reinterpret_cast<AHardwareBuffer* (*)(JNIEnv*, jobject)>(
             resolveSymbol("AHardwareBuffer_fromHardwareBuffer"));
+    auto acquireBuffer = reinterpret_cast<HardwareBufferReferenceFn>(
+            resolveSymbol("AHardwareBuffer_acquire"));
+    auto releaseBuffer = reinterpret_cast<HardwareBufferReferenceFn>(
+            resolveSymbol("AHardwareBuffer_release"));
     auto getNativeClientBuffer = reinterpret_cast<GetNativeClientBufferFn>(
             resolveSymbol("eglGetNativeClientBufferANDROID"));
     auto createImage = reinterpret_cast<CreateImageKhrFn>(
@@ -49,25 +54,25 @@ Java_com_limelight_binding_video_FrontBufferHardwareBridge_nativeCreateFbo(
     auto imageTargetRenderbuffer = reinterpret_cast<ImageTargetRenderbufferFn>(
             resolveSymbol("glEGLImageTargetRenderbufferStorageOES"));
 
-    if (fromJava == nullptr || getNativeClientBuffer == nullptr ||
+    if (fromJava == nullptr || acquireBuffer == nullptr || releaseBuffer == nullptr || getNativeClientBuffer == nullptr ||
             createImage == nullptr || imageTargetRenderbuffer == nullptr) {
         return 0;
     }
 
     AHardwareBuffer* buffer = fromJava(env, javaBuffer);
     if (buffer == nullptr) return 0;
-    AHardwareBuffer_acquire(buffer);
+    acquireBuffer(buffer);
 
     EGLDisplay display = eglGetCurrentDisplay();
     EGLContext context = eglGetCurrentContext();
     if (display == EGL_NO_DISPLAY || context == EGL_NO_CONTEXT) {
-        AHardwareBuffer_release(buffer);
+        releaseBuffer(buffer);
         return 0;
     }
 
     EGLClientBuffer clientBuffer = getNativeClientBuffer(buffer);
     if (clientBuffer == nullptr) {
-        AHardwareBuffer_release(buffer);
+        releaseBuffer(buffer);
         return 0;
     }
 
@@ -78,7 +83,7 @@ Java_com_limelight_binding_video_FrontBufferHardwareBridge_nativeCreateFbo(
     EGLImageKHR image = createImage(display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID,
                                     clientBuffer, imageAttributes);
     if (image == EGL_NO_IMAGE_KHR) {
-        AHardwareBuffer_release(buffer);
+        releaseBuffer(buffer);
         return 0;
     }
 
@@ -101,7 +106,7 @@ Java_com_limelight_binding_video_FrontBufferHardwareBridge_nativeCreateFbo(
         auto destroyImage = reinterpret_cast<DestroyImageKhrFn>(
                 resolveSymbol("eglDestroyImageKHR"));
         if (destroyImage != nullptr) destroyImage(display, image);
-        AHardwareBuffer_release(buffer);
+        releaseBuffer(buffer);
         delete result;
         return 0;
     }
@@ -139,6 +144,10 @@ Java_com_limelight_binding_video_FrontBufferHardwareBridge_nativeDestroyFbo(
     if (destroyImage != nullptr && fbo->image != EGL_NO_IMAGE_KHR) {
         destroyImage(fbo->display, fbo->image);
     }
-    if (fbo->buffer != nullptr) AHardwareBuffer_release(fbo->buffer);
+    if (fbo->buffer != nullptr) {
+        auto releaseBuffer = reinterpret_cast<HardwareBufferReferenceFn>(
+                resolveSymbol("AHardwareBuffer_release"));
+        if (releaseBuffer != nullptr) releaseBuffer(fbo->buffer);
+    }
     delete fbo;
 }
