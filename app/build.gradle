@@ -198,21 +198,6 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:5.19.0'
 }
 
-// Keep source, SDK and model downloads reproducible and outside the source tree.
-def prepareRife = tasks.register('prepareRife', Exec) {
-    workingDir rootProject.projectDir
-    commandLine 'python3', 'scripts/interpolation/prepare.py'
-    inputs.files(rootProject.file('scripts/interpolation/prepare.py'), rootProject.file('scripts/interpolation/dependencies.json'))
-    outputs.dir(layout.buildDirectory.dir('interpolation'))
-}
-android.sourceSets.main.assets.srcDir(layout.buildDirectory.dir('interpolation/assets'))
-tasks.configureEach { task ->
-    if (task.name.startsWith('configureNdkBuild') || task.name.startsWith('buildNdkBuild') ||
-        task.name == 'preBuild' || (task.name.startsWith('merge') && task.name.endsWith('Assets'))) {
-        task.dependsOn(prepareRife)
-    }
-}
-
 def prepareDisplayShaders = tasks.register('prepareDisplayShaders', Exec) {
     workingDir rootProject.projectDir
     commandLine 'python3', 'scripts/display/compile_shaders.py'
