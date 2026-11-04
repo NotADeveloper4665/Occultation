@@ -4,6 +4,7 @@ import static java.lang.Thread.sleep;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import androidx.preference.PreferenceManager;
 import android.net.ConnectivityManager;
 import android.net.IpPrefix;
 import android.net.LinkProperties;
@@ -52,6 +53,7 @@ public class NvConnection {
     private String uniqueId;
     private ConnectionContext context;
     private static Semaphore connectionAllowed = new Semaphore(1);
+    private volatile SyzygyQuicTunnel quicTunnel;
     private boolean allowKeyboard = true, allowMouse = true, allowController = true, viewOnly;
 
     /** Apply before starting the stream; permissions remain fixed for this session. */
@@ -122,6 +124,9 @@ public class NvConnection {
             MoonBridge.stopConnection();
             MoonBridge.cleanupBridge();
         }
+        SyzygyQuicTunnel activeTunnel = quicTunnel;
+        quicTunnel = null;
+        if (activeTunnel != null) activeTunnel.close();
 
         // Now a pending connection can be processed
         connectionAllowed.release();
@@ -477,12 +482,31 @@ public class NvConnection {
                     return;
                 }
 
+                String connectionAddress = context.serverAddress.address;
+                String rtspSessionUrl = context.rtspSessionUrl;
+                boolean requestSyzygyQuic = PreferenceManager.getDefaultSharedPreferences(appContext)
+                        .getBoolean("checkbox_syzygy_quic", false);
+                if (requestSyzygyQuic) {
+                    try {
+                        quicTunnel = SyzygyQuicTunnel.connect(connectionAddress, context.serverCert, cryptoProvider);
+                        connectionAddress = SyzygyQuicTunnel.loopbackAddress();
+                        rtspSessionUrl = quicTunnel.rewriteRtspUrl(rtspSessionUrl);
+                        LimeLog.info("Syzygy QUIC transport authenticated; routing Moonlight-core through loopback");
+                    } catch (Exception | LinkageError quicError) {
+                        SyzygyQuicTunnel failedTunnel = quicTunnel;
+                        quicTunnel = null;
+                        if (failedTunnel != null) failedTunnel.close();
+                        LimeLog.info("Syzygy QUIC setup failed; using standard transport: " + quicError);
+                        context.connListener.displayTransientMessage("Syzygy QUIC unavailable; using standard streaming transport.");
+                    }
+                }
+
                 // Moonlight-core is not thread-safe with respect to connection start and stop, so
                 // we must not invoke that functionality in parallel.
                 synchronized (MoonBridge.class) {
                     MoonBridge.setupBridge(videoDecoderRenderer, audioRenderer, connectionListener);
-                    int ret = MoonBridge.startConnection(context.serverAddress.address,
-                            context.serverAppVersion, context.serverGfeVersion, context.rtspSessionUrl,
+                    int ret = MoonBridge.startConnection(connectionAddress,
+                            context.serverAppVersion, context.serverGfeVersion, rtspSessionUrl,
                             context.serverCodecModeSupport,
                             context.negotiatedWidth, context.negotiatedHeight,
                             context.streamConfig.getRefreshRate(), context.streamConfig.getBitrate(),
@@ -495,6 +519,9 @@ public class NvConnection {
                             context.streamConfig.getColorSpace(),
                             context.streamConfig.getColorRange());
                     if (ret != 0) {
+                        SyzygyQuicTunnel failedTunnel = quicTunnel;
+                        quicTunnel = null;
+                        if (failedTunnel != null) failedTunnel.close();
                         // LiStartConnection() failed, so the caller is not expected
                         // to stop the connection themselves. We need to release their
                         // semaphore count for them.
