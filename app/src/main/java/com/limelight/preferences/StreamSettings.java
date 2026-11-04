@@ -336,36 +336,6 @@ public class StreamSettings extends AppCompatActivity {
         public void initializePreferences() {
             addPreferencesFromResource(R.xml.preferences);
             PreferenceScreen screen = getPreferenceScreen();
-            Preference acceleratorTest = findPreference("neural_accelerator_test");
-            if (acceleratorTest != null) acceleratorTest.setOnPreferenceClickListener(preference -> {
-                android.app.Activity reportActivity = requireActivity();
-                android.content.Context context = reportActivity;
-                acceleratorTest.setEnabled(false);
-                new Thread(() -> {
-                    String report = com.limelight.neural.NnapiDiagnostics.runSelfTest();
-                    reportActivity.runOnUiThread(() -> {
-                        if (!isAdded() || reportActivity.isFinishing() || reportActivity.isDestroyed()) return;
-                        acceleratorTest.setEnabled(true);
-                        new androidx.appcompat.app.AlertDialog.Builder(context)
-                                .setTitle("NNAPI execution test")
-                                .setMessage(report)
-                                .setPositiveButton("Copy result", (dialog, which) -> {
-                                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
-                                            context.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("NNAPI execution test", report));
-                                })
-                                .setNegativeButton("Close", null).show();
-                    });
-                }, "NnapiDiagnostics").start();
-                return true;
-            });
-
-            Preference rifeTest = findPreference("rife_interpolation_test");
-            if (rifeTest != null) rifeTest.setOnPreferenceClickListener(preference -> {
-                com.limelight.interpolation.RifeTestUi.show(requireActivity());
-                return true;
-            });
-
             Preference overlayEditor = findPreference("overlay_configuration");
             if (overlayEditor != null) overlayEditor.setOnPreferenceClickListener(preference -> {
                 startActivity(new Intent(requireContext(), com.limelight.overlay.OverlayEditorActivity.class));
