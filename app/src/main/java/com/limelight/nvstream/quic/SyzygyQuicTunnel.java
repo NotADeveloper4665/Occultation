@@ -40,10 +40,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class SyzygyQuicTunnel implements AutoCloseable {
     private static final String TAG = "SyzygyQuic";
     public static final String LOOPBACK = "127.0.0.1";
-    public static final int BASE_PORT = 47989;
-    public static final int QUIC_PORT = BASE_PORT + 31;
-    private static final int[] TCP_PORTS = { BASE_PORT - 5, BASE_PORT + 21 };
-    private static final int[] UDP_PORTS = { BASE_PORT + 9, BASE_PORT + 10, BASE_PORT + 11 };
+    public static final int DEFAULT_BASE_PORT = 47989;
+    private final int basePort;
+    private final int[] tcpPorts;
+    private final int[] udpPorts;
     private static final int MAX_PACKET = 65_507;
 
     private final long nativeHandle;
@@ -59,17 +59,20 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
     private final Map<Integer, DatagramSocket> udpSockets = new ConcurrentHashMap<>();
     private final Map<Integer, SocketAddress> udpPeers = new ConcurrentHashMap<>();
 
-    private SyzygyQuicTunnel(long nativeHandle, int controlStream) throws IOException {
+    private SyzygyQuicTunnel(long nativeHandle, int controlStream, int basePort) throws IOException {
         this.nativeHandle = nativeHandle;
         this.controlStream = controlStream;
+        this.basePort = basePort;
+        this.tcpPorts = new int[] { basePort - 5, basePort + 21 };
+        this.udpPorts = new int[] { basePort + 9, basePort + 10, basePort + 11 };
         try {
-            for (int port : TCP_PORTS) {
+            for (int port : tcpPorts) {
                 ServerSocket listener = new ServerSocket();
                 listener.setReuseAddress(false);
                 listener.bind(new InetSocketAddress(InetAddress.getByName(LOOPBACK), port), 16);
                 tcpListeners.put(port, listener);
             }
-            for (int port : UDP_PORTS) {
+            for (int port : udpPorts) {
                 DatagramSocket socket = new DatagramSocket(null);
                 socket.setReuseAddress(false);
                 socket.bind(new InetSocketAddress(InetAddress.getByName(LOOPBACK), port));
@@ -83,9 +86,9 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
         startForwarders();
     }
 
-    public static SyzygyQuicTunnel connect(String host, X509Certificate hostCertificate,
+    public static SyzygyQuicTunnel connect(String host, int basePort, X509Certificate hostCertificate,
                                            LimelightCryptoProvider cryptoProvider) throws Exception {
-        if (host == null || hostCertificate == null || cryptoProvider == null) {
+        if (host == null || hostCertificate == null || cryptoProvider == null || basePort < 6 || basePort > 65504) {
             throw new IllegalArgumentException("Missing Syzygy QUIC host or paired identity");
         }
         String fingerprint = sha256(hostCertificate.getEncoded());
@@ -96,7 +99,7 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
         String address = resolved.getHostAddress();
         if (address.indexOf(':') >= 0) address = "[" + address + "]";
 
-        long handle = SyzygyQuicNative.nativeConnect(address, QUIC_PORT, fingerprint);
+        long handle = SyzygyQuicNative.nativeConnect(address, basePort + 31, fingerprint);
         if (handle == 0) throw new IOException("Syzygy QUIC connection could not be created");
         try {
             String challengeLine = SyzygyQuicNative.nativeReadAuthChallenge(handle);
@@ -114,7 +117,7 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
             }
             int control = SyzygyQuicNative.nativeOpenBi(handle, "{\"kind\":\"control\"}\n");
             if (control < 0) throw new IOException("Could not open Syzygy QUIC control stream");
-            return new SyzygyQuicTunnel(handle, control);
+            return new SyzygyQuicTunnel(handle, control, basePort);
         } catch (Exception | LinkageError error) {
             SyzygyQuicNative.nativeClose(handle);
             throw error;
@@ -217,7 +220,7 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
                 udpPeers.put(port, packet.getSocketAddress());
                 byte[] payload = Arrays.copyOfRange(packet.getData(), packet.getOffset(),
                         packet.getOffset() + packet.getLength());
-                if (port == BASE_PORT + 10) {
+                if (port == basePort + 10) {
                     writeControlPacket(payload);
                 } else {
                     for (byte[] fragment : datagrams.fragment(port, payload)) {
@@ -273,7 +276,7 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
                     if (length < 0 || length > MAX_PACKET) throw new IOException("Invalid QUIC control frame length");
                     if (all.length - offset < 4 + length) break;
                     byte[] payload = Arrays.copyOfRange(all, offset + 4, offset + 4 + length);
-                    sendUdpToCore(BASE_PORT + 10, payload);
+                    sendUdpToCore(basePort + 10, payload);
                     offset += 4 + length;
                 }
                 pending.reset();
