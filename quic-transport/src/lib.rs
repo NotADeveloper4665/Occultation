@@ -20,7 +20,6 @@ use rustls::{
 };
 use sha2::{Digest, Sha256};
 use tokio::{
-    io::AsyncWriteExt,
     runtime::{Builder, Runtime},
     sync::Mutex as AsyncMutex,
     time::timeout,
