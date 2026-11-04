@@ -489,10 +489,12 @@ public class NvConnection {
                         .getBoolean("checkbox_syzygy_quic", false);
                 if (requestSyzygyQuic) {
                     try {
-                        quicTunnel = SyzygyQuicTunnel.connect(connectionAddress, context.serverAddress.port, context.serverCert, cryptoProvider);
+                        int quicBasePort = context.serverAddress.port > 0 ? context.serverAddress.port : SyzygyQuicTunnel.DEFAULT_BASE_PORT;
+                        quicTunnel = SyzygyQuicTunnel.connect(connectionAddress, quicBasePort, context.serverCert, cryptoProvider);
                         connectionAddress = SyzygyQuicTunnel.loopbackAddress();
                         rtspSessionUrl = quicTunnel.rewriteRtspUrl(rtspSessionUrl);
                         LimeLog.info("Syzygy QUIC transport authenticated; routing Moonlight-core through loopback");
+                        context.connListener.displayTransientMessage("Syzygy QUIC transport active.");
                     } catch (Exception | LinkageError quicError) {
                         SyzygyQuicTunnel failedTunnel = quicTunnel;
                         quicTunnel = null;
