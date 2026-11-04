@@ -1,11 +1,11 @@
 #include <jni.h>
-#include <android/hardware_buffer.h>
-#include <android/hardware_buffer_jni.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <dlfcn.h>
 #include <cstdint>
+
+struct AHardwareBuffer;
 
 #ifndef EGL_NATIVE_BUFFER_ANDROID
 #define EGL_NATIVE_BUFFER_ANDROID 0x3140
@@ -29,7 +29,9 @@ struct HardwareBufferFbo {
 };
 
 static void* resolveSymbol(const char* name) {
+    static void* androidLibrary = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
     void* symbol = dlsym(RTLD_DEFAULT, name);
+    if (symbol == nullptr && androidLibrary != nullptr) symbol = dlsym(androidLibrary, name);
     if (symbol == nullptr) {
         symbol = reinterpret_cast<void*>(eglGetProcAddress(name));
     }
