@@ -305,8 +305,11 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
         int schemeSeparator = originalUrl.indexOf("//");
         if (schemeSeparator < 0 || authority == null) throw new IOException("Invalid RTSP authority");
         int authorityStart = schemeSeparator + 2;
-        int authorityEnd = originalUrl.indexOf('/', authorityStart);
-        if (authorityEnd < 0) authorityEnd = originalUrl.length();
+        int authorityEnd = originalUrl.length();
+        for (char delimiter : new char[] {'/', '?', '#'}) {
+            int candidate = originalUrl.indexOf(delimiter, authorityStart);
+            if (candidate >= 0 && candidate < authorityEnd) authorityEnd = candidate;
+        }
         String loopbackAuthority = LOOPBACK + (uri.getPort() >= 0 ? ":" + uri.getPort() : "");
         return originalUrl.substring(0, authorityStart) + loopbackAuthority + originalUrl.substring(authorityEnd);
     }
