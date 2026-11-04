@@ -159,7 +159,6 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
     private void forwardTcp(Socket socket, int port) {
         int stream = -1;
         AtomicInteger directions = new AtomicInteger(2);
-        AtomicBoolean failed = new AtomicBoolean();
         try {
             stream = SyzygyQuicNative.nativeOpenBi(nativeHandle,
                     "{\"kind\":\"tcp\",\"port\":" + port + "}\n");
@@ -178,10 +177,12 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
                     }
                     SyzygyQuicNative.nativeStreamFinish(nativeHandle, streamId);
                 } catch (Exception error) {
-                    failed.set(true);
                     closeQuietly(socket);
                 } finally {
-                    if (directions.decrementAndGet() == 0) closeQuietly(socket);
+                    if (directions.decrementAndGet() == 0) {
+                        SyzygyQuicNative.nativeForgetStream(nativeHandle, streamId);
+                        closeQuietly(socket);
+                    }
                 }
             });
             workers.execute(() -> {
