@@ -20,7 +20,7 @@ use rustls::{
 };
 use sha2::{Digest, Sha256};
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncWriteExt,
     runtime::{Builder, Runtime},
     sync::Mutex as AsyncMutex,
     time::timeout,
@@ -128,16 +128,19 @@ async fn read_line(stream: &mut RecvStream) -> Result<String, String> {
     loop {
         let mut byte = [0u8; 1];
         let count = stream.read(&mut byte).await.map_err(|e| e.to_string())?;
-        if count == 0 {
-            return Err("QUIC authentication stream closed before newline".into());
+        match count {
+            Some(1) => {
+                if byte[0] == b'\n' {
+                    return String::from_utf8(line).map_err(|e| e.to_string());
+                }
+                if line.len() >= MAX_AUTH_LINE {
+                    return Err("QUIC authentication line exceeds size limit".into());
+                }
+                line.push(byte[0]);
+            }
+            Some(0) | None => return Err("QUIC authentication stream closed before newline".into()),
+            Some(_) => return Err("Unexpected QUIC authentication read size".into()),
         }
-        if byte[0] == b'\n' {
-            return String::from_utf8(line).map_err(|e| e.to_string());
-        }
-        if line.len() >= MAX_AUTH_LINE {
-            return Err("QUIC authentication line exceeds size limit".into());
-        }
-        line.push(byte[0]);
     }
 }
 
@@ -344,7 +347,8 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeS
             match timeout(Duration::from_millis(timeout_ms.max(1) as u64), recv.read(&mut buffer)).await {
                 Err(_) => Ok(None),
                 Ok(Err(error)) => Err(error.to_string()),
-                Ok(Ok(count)) => { buffer.truncate(count); Ok(Some(buffer)) }
+                Ok(Ok(Some(count))) => { buffer.truncate(count); Ok(Some(buffer)) }
+                Ok(Ok(None)) => Ok(Some(Vec::new())),
             }
         })
     })();
