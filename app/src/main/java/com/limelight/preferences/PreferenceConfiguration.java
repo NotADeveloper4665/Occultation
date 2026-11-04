@@ -238,7 +238,6 @@ public class PreferenceConfiguration {
     public int width, height, bitrate;
     public float fps;
 //    public String customBitrate;
-    public boolean forceTightThresholds = false; // default off
     public boolean enableUltraLowLatency;
     public String customResolution;
     public String customRefreshRate;
@@ -293,8 +292,6 @@ public class PreferenceConfiguration {
     public boolean autoOrientation;
     //虚拟屏幕键盘按键
     public boolean enableKeyboard;
-    //修复JoyCon十字键
-    public boolean enableJoyConFix;
 
     //自由摇杆啊
     public boolean enableNewAnalogStick;
@@ -959,8 +956,6 @@ private static int getFramePacingValue(Context context) {
         config.enableKeyboard = prefs.getBoolean(CHECKBOX_ENABLE_KEYBOARD,false);
 
         config.enableKeyboardVibrate = prefs.getBoolean(CHECKBOX_ENABLE_KEYBOARD_VIBRATE,false);
-        //兼容joycon手柄
-        config.enableJoyConFix = prefs.getBoolean("checkbox_joycon_fix",false);
         //全键盘透明度
         config.oscKeyboardOpacity = prefs.getInt("seekbar_keyboard_axi_opacity",DEFAULT_OPACITY);
 
