@@ -55,6 +55,17 @@ public final class FrontBufferRenderer implements AutoCloseable {
             return;
         }
 
+        if (renderer.contains("mali-g57")) {
+            HardwareBufferFrontBufferRenderer backend = createHardwareBackend(
+                    displaySurface, parentSurfaceControl, width, height, false, status);
+            decoderSurface = backend.decoderSurface();
+            closeAction = backend::close;
+            singleBufferActive = false;
+            portraitTransformActive = false;
+            if (status != null) status.accept("Mali-G57 using HardwareBuffer SurfaceControl path");
+            return;
+        }
+
         if (renderer.contains("mali") || renderer.contains("arm")) {
             try {
                 AdrenoEglSingleBufferRenderer backend =
