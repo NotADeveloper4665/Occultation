@@ -431,3 +431,28 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeC
         drop(client);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_sha256_certificate_pin() {
+        let pin = parse_pin("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef").unwrap();
+        assert_eq!(pin[0], 0x01);
+        assert_eq!(pin[1], 0x23);
+        assert_eq!(pin[31], 0xef);
+    }
+
+    #[test]
+    fn rejects_malformed_certificate_pins() {
+        assert!(parse_pin("00").is_err());
+        assert!(parse_pin("zz".repeat(32).as_str()).is_err());
+        assert!(parse_pin(&"0".repeat(63)).is_err());
+    }
+
+    #[test]
+    fn sq1_alpn_is_fixed() {
+        assert_eq!(ALPN, b"syzygy-quic-1");
+    }
+}
