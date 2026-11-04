@@ -356,6 +356,22 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeS
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeForgetStream(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    stream_id: jint,
+) {
+    if let Err(error) = (|| -> Result<(), String> {
+        let client = client_from_handle(handle)?;
+        client.streams.lock().map_err(|_| "QUIC stream map poisoned")?.remove(&stream_id);
+        Ok(())
+    })() {
+        throw_error(&mut env, error);
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeStreamFinish(
     mut env: JNIEnv,
     _class: JClass,
