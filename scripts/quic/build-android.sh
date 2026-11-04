@@ -7,6 +7,10 @@ OUT="$ROOT/app/build/generated/jniLibs"
 command -v cargo >/dev/null 2>&1 || { echo "Rust cargo is required to build the Syzygy QUIC transport" >&2; exit 1; }
 command -v cargo-ndk >/dev/null 2>&1 || { echo "Install cargo-ndk (cargo install cargo-ndk) to build the Syzygy QUIC transport" >&2; exit 1; }
 
+if [ -z "${ANDROID_NDK_HOME:-}" ] && [ -n "${ANDROID_HOME:-}" ]; then
+  export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.0.12077973"
+fi
+
 mkdir -p "$OUT"
 cargo ndk \
   -t arm64-v8a \
