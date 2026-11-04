@@ -55,44 +55,19 @@ public final class FrontBufferRenderer implements AutoCloseable {
             return;
         }
 
-        if (renderer.contains("mali-g57")) {
+        if (renderer.contains("mali") || renderer.contains("arm")) {
             HardwareBufferFrontBufferRenderer backend = createHardwareBackend(
                     displaySurface, parentSurfaceControl, width, height, false, status);
             decoderSurface = backend.decoderSurface();
             closeAction = backend::close;
             singleBufferActive = false;
             portraitTransformActive = false;
-            if (status != null) status.accept("Mali-G57 using HardwareBuffer SurfaceControl path");
-            return;
-        }
-
-        if (renderer.contains("mali") || renderer.contains("arm")) {
-            try {
-                AdrenoEglSingleBufferRenderer backend =
-                        new AdrenoEglSingleBufferRenderer(displaySurface, width, height, status);
-                decoderSurface = backend.decoderSurface();
-                closeAction = backend::close;
-                singleBufferActive = backend.isSingleBufferActive();
-                portraitTransformActive = false;
-                return;
-            } catch (RuntimeException | LinkageError singleBufferFailure) {
-                if (Build.VERSION.SDK_INT >= 33 && parentSurfaceControl != null) {
-                    try {
-                        HardwareBufferFrontBufferRenderer backend = createHardwareBackend(
-                                displaySurface, parentSurfaceControl, width, height, false, status);
-                        decoderSurface = backend.decoderSurface();
-                        closeAction = backend::close;
-                        singleBufferActive = false;
-                        portraitTransformActive = false;
-                        if (status != null) status.accept("Mali single-buffer path unavailable; using HardwareBuffer SurfaceControl path");
-                        return;
-                    } catch (RuntimeException | LinkageError hardwareFailure) {
-                        hardwareFailure.addSuppressed(singleBufferFailure);
-                        throw hardwareFailure;
-                    }
-                }
-                throw singleBufferFailure;
+            if (status != null) {
+                status.accept(renderer.contains("mali-g57")
+                        ? "Mali-G57 using HardwareBuffer SurfaceControl fallback"
+                        : "Mali using HardwareBuffer SurfaceControl path");
             }
+            return;
         }
 
         throw new IllegalStateException("Unsupported GPU for front-buffer rendering: " + renderer);
