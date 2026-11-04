@@ -180,9 +180,9 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeC
             let mut endpoint = Endpoint::client(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0))
                 .map_err(|e| e.to_string())?;
             endpoint.set_default_client_config(config);
-            let connection = endpoint.connect(address, "syzygy")
-                .map_err(|e| e.to_string())?
-                .await
+            let connecting = endpoint.connect(address, "syzygy").map_err(|e| e.to_string())?;
+            let connection = timeout(Duration::from_secs(8), connecting).await
+                .map_err(|_| "Timed out connecting to Syzygy QUIC relay")?
                 .map_err(|e| e.to_string())?;
             let (mut send, recv) = connection.open_bi().await.map_err(|e| e.to_string())?;
             send.write_all(b"{\"hello\":1}\n").await.map_err(|e| e.to_string())?;
@@ -253,7 +253,11 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeA
                 let mut recv = stream.recv.lock().await;
                 read_line(&mut recv).await
             }).await.map_err(|_| "Timed out waiting for Syzygy authorization")?
-        }).map(|line| line == "{\"authorized\":true}")
+        }).and_then(|line| {
+            let value: serde_json::Value = serde_json::from_str(&line).map_err(|e| e.to_string())?;
+            Ok(value.as_object().map(|object| object.len() == 1 &&
+                object.get("authorized") == Some(&serde_json::Value::Bool(true))).unwrap_or(false))
+        })
     })();
     match result {
         Ok(true) => 1,
