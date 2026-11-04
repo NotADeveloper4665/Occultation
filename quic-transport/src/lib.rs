@@ -352,6 +352,26 @@ pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeS
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeStreamFinish(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    stream_id: jint,
+) -> jboolean {
+    let result = (|| -> Result<(), String> {
+        let client = client_from_handle(handle)?;
+        let stream = client.streams.lock().map_err(|_| "QUIC stream map poisoned")?
+            .get(&stream_id).cloned().ok_or("Unknown QUIC stream")?;
+        let mut send = stream.send.blocking_lock();
+        send.finish().map_err(|e| e.to_string())
+    })();
+    match result {
+        Ok(()) => 1,
+        Err(error) => { throw_error(&mut env, error); 0 }
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_limelight_nvstream_quic_SyzygyQuicNative_nativeSendDatagram(
     mut env: JNIEnv,
     _class: JClass,
