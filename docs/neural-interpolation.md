@@ -2,7 +2,7 @@
 
 ## Status
 
-The adaptive policy and frame-admission controller are implemented and tested. They are deliberately not wired into the MediaCodec presentation path. A reusable native NNAPI compiler/executor and explicit ADD-graph execution test are now implemented (see below). Pinned RIFE Lite ONNX and ncnn RIFE v4 models now have explicit frame-pair inference APIs and a settings test (see rife-android.md). No decoder frame consumer, generated-frame stream renderer or live network feed is connected. There is no active frame-generation setting. Device enumeration from 0.1.8-dev is only diagnostics.
+The adaptive policy and frame-admission controller are implemented and tested. They are deliberately not wired into the MediaCodec presentation path. A reusable native NNAPI compiler/executor and explicit ADD-graph execution test are now implemented (see below). Pinned RIFE Lite ONNX and ncnn RIFE v4 models now have explicit frame-pair inference APIs and a settings test (see rife-android.md). No decoder frame consumer, generated-frame stream renderer or live network feed is connected. There is no active frame-generation setting.
 
 ## Established methods to evaluate
 
