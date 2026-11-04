@@ -16,6 +16,7 @@ public final class SyzygyQuicNative {
     public static native boolean nativeAuthenticate(long handle, String proofLine);
     public static native int nativeOpenBi(long handle, String prefaceLine);
     public static native boolean nativeStreamWrite(long handle, int streamId, byte[] data);
+    public static native boolean nativeStreamFinish(long handle, int streamId);
     /** Returns null on timeout and an empty array on end-of-stream. */
     public static native byte[] nativeStreamRead(long handle, int streamId, int maxBytes, int timeoutMs);
     public static native boolean nativeSendDatagram(long handle, byte[] data);
