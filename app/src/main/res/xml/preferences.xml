@@ -18,6 +18,11 @@
             android:title="Neural upscaling hardware report"
             android:summary="Check and copy the accelerators exposed by this device. Neural upscaling is not enabled by this report." />
         <SwitchPreference
+            android:key="checkbox_syzygy_quic"
+            android:title="Syzygy QUIC transport"
+            android:summary="Use the paired-certificate-pinned Syzygy QUIC relay for stream TCP and UDP. Requires the QUIC relay on the host; falls back to standard transport if connection setup fails."
+            android:defaultValue="false" />
+        <SwitchPreference
             android:key="wan_optimization"
             android:title="WAN / 5G Optimization"
             android:summary="Use smaller packets, responsive rendering and compatible Syzygy network adaptation. Unsupported host features keep normal behavior. Applies to the next stream."
