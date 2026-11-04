@@ -22,8 +22,6 @@ Settings → Video:
 - **Vulkan video output (experimental)** selects the new path on Android 13+.
 - **Prefer AHardwareBuffer on MediaTek** selects it only on detected MediaTek SoCs.
   A Mali GPU alone is not MediaTek detection; Google Tensor is not classified as MTK.
-- **Arm ASR availability** explains the missing input resources. It is a status
-  report, not an enabled upscaler.
 
 Both display choices default off. SDR fit/fill/stretch are implemented. HDR uses the
 standard path; dynamic HLG/PQ frames also trigger standard-output recovery. Vulkan
@@ -64,7 +62,7 @@ matrix math. VK_KHR_sampler_ycbcr_conversion is a Vulkan API mechanism; the driv
 implementation determines whether conversion uses fixed hardware. This is not a
 promise that all Mali execution slots become free.
 
-## Decoder latency and Arm ASR
+## Decoder latency
 
 Decoder selection uses supported MIME/profile/capabilities and Android hardware flags,
 not a fixed component name. c2.google.av1.decoder is not a hardware-decoder target.
