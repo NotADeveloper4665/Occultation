@@ -251,7 +251,7 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
                 "varying vec2 vTexCoord; void main(){ gl_Position=aPosition; vTexCoord=(uTexMatrix*aTexCoord).xy; }";
         String fragment = "#extension GL_OES_EGL_image_external : require\nprecision mediump float; " +
                 "uniform samplerExternalOES sTexture; uniform int uRotatePortrait; varying vec2 vTexCoord; " +
-                "void main(){ vec2 uv=vTexCoord; if(uRotatePortrait==1) uv=vec2(vTexCoord.y,1.0-vTexCoord.x); " +
+                "void main(){ vec2 uv=vTexCoord; if(uRotatePortrait==1) uv=vec2(1.0-vTexCoord.y,vTexCoord.x); " +
                 "gl_FragColor=texture2D(sTexture,uv); }";
         int vs = compileShader(GLES20.GL_VERTEX_SHADER, vertex);
         int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, fragment);
