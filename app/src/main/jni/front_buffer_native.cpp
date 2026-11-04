@@ -14,10 +14,10 @@ struct AHardwareBuffer;
 #define EGL_IMAGE_PRESERVED_KHR 0x30D2
 #endif
 
-using GetNativeClientBufferFn = EGLClientBuffer (*)(const AHardwareBuffer*);
-using CreateImageKhrFn = EGLImageKHR (*)(EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, const EGLint*);
-using DestroyImageKhrFn = EGLBoolean (*)(EGLDisplay, EGLImageKHR);
-using ImageTargetRenderbufferFn = void (*)(GLenum, EGLImageKHR);
+typedef EGLClientBuffer (EGLAPIENTRYP GetNativeClientBufferFn)(const AHardwareBuffer*);
+typedef EGLImageKHR (EGLAPIENTRYP CreateImageKhrFn)(EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, const EGLint*);
+typedef EGLBoolean (EGLAPIENTRYP DestroyImageKhrFn)(EGLDisplay, EGLImageKHR);
+typedef void (EGLAPIENTRYP ImageTargetRenderbufferFn)(GLenum, EGLImageKHR);
 using HardwareBufferReferenceFn = void (*)(AHardwareBuffer*);
 
 struct HardwareBufferFbo {
