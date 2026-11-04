@@ -97,6 +97,8 @@ public final class FrontBufferRenderer implements AutoCloseable {
         }
     }
 
+    public Surface displaySurface() { return displaySurface; }
+
     public Surface decoderSurface() {
         if (closed.get() || decoderSurface == null) {
             throw new IllegalStateException("Front-buffer decoder Surface is unavailable");
