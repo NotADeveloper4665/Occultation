@@ -199,6 +199,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private boolean invertResolution;
     private int videoFormat;
     private Surface renderTarget;
+    private FrontBufferRenderer frontBufferRenderer;
     private volatile boolean stopping;
     private CrashListener crashListener;
     private boolean reportedCrash;
@@ -436,7 +437,22 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     }
 
     public void setRenderTarget(Surface renderTarget) {
+        if (frontBufferRenderer != null) {
+            frontBufferRenderer.close();
+            frontBufferRenderer = null;
+        }
         this.renderTarget = renderTarget;
+        if (renderTarget != null && prefs != null && prefs.enableFrontBufferRendering && !prefs.enableHdr) {
+            try {
+                frontBufferRenderer = new FrontBufferRenderer(renderTarget, prefs.width, prefs.height,
+                        message -> LimeLog.info("Front-buffer renderer: " + message));
+                this.renderTarget = frontBufferRenderer.decoderSurface();
+            } catch (Exception | LinkageError error) {
+                LimeLog.info("Front-buffer renderer unavailable; using standard MediaCodec Surface: " + error);
+                frontBufferRenderer = null;
+                this.renderTarget = renderTarget;
+            }
+        }
     }
 
     public MediaCodecDecoderRenderer(Activity activity, PreferenceConfiguration prefs,
@@ -690,7 +706,7 @@ this.prefs = prefs;
 
         videoDecoder.configure(format, renderTarget, null, 0);
 
-        try { applySurfaceFrameRate(renderTarget, targetFps); } catch (Throwable ignored) {}
+        try { applySurfaceFrameRate(frontBufferRenderer != null ? frontBufferRenderer.displaySurface() : renderTarget, targetFps); } catch (Throwable ignored) {}
 
         try {
             MediaCodecInfo __info = (android.os.Build.VERSION.SDK_INT >= 21) ? videoDecoder.getCodecInfo() : null;
@@ -2004,6 +2020,10 @@ if (preferLowerDelays) {
             // handle that here, we will re-interrupt the thread to set the interrupt
             // status back to true.
             Thread.currentThread().interrupt();
+        }
+        if (frontBufferRenderer != null) {
+            frontBufferRenderer.close();
+            frontBufferRenderer = null;
         }
     }
 
