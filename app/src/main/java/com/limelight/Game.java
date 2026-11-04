@@ -381,7 +381,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Read the stream preferences
         prefConfig = PreferenceConfiguration.readPreferences(this);
-        portraitInputTransformActive = prefConfig.enableFrontBufferRendering &&
+        portraitInputTransformActive = prefConfig.enableFrontBufferRendering && !prefConfig.enableHdr &&
                 Build.VERSION.SDK_INT >= 33 && isMediaTekFrontBufferDevice();
         tombstonePrefs = Game.this.getSharedPreferences("DecoderTombstone", 0);
 
