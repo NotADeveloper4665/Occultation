@@ -15,4 +15,4 @@ cargo ndk \
   -t x86_64 \
   -p 21 \
   -o "$OUT" \
-  build --release --manifest-path "$ROOT/quic-transport/Cargo.toml"
+  -- build --release --manifest-path "$ROOT/quic-transport/Cargo.toml"
