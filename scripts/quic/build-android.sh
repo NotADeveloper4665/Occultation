@@ -17,6 +17,6 @@ cargo ndk \
   -t armeabi-v7a \
   -t x86 \
   -t x86_64 \
-  -p 21 \
+  -P 21 \
   -o "$OUT" \
-  -- build --release --manifest-path "$ROOT/quic-transport/Cargo.toml"
+  build --release
