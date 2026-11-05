@@ -9,6 +9,7 @@ import android.opengl.EGLConfig;
 import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
 import android.opengl.EGLSurface;
+import android.opengl.EGLSync;
 import android.opengl.EGLExt;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
