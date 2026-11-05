@@ -745,5 +745,9 @@
     <string name="desktop_mouse">Toggle full-screen mouse</string>
     <string name="desktop_trackpad">Trackpad</string>
     <string name="host_settings">Settings</string>
+    <string name="title_joyconfix">Switch Joy-Con compatibility</string>
+    <string name="summary_joyconfix">Enable this option if your Joy-Con does not work or its buttons are mapped incorrectly. Supports Android 10 and newer.</string>
+    <string name="title_checkbox_forceTightThresholds">Tight VSync (experimental)</string>
+    <string name="summary_checkbox_forceTightThresholds">Use tighter VSync thresholds to reduce latency; may increase frame drops.</string>
 </resources>
 
