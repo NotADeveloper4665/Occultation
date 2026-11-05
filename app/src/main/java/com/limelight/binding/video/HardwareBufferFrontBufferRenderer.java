@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequiresApi(33)
 public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
     private static final String TAG = "OccultationHardwareBuffer";
-    private static final int EGL_SYNC_FENCE_KHR = 0x30F9;
+    private static final int EGL_SYNC_NATIVE_FENCE_ANDROID = 0x3144;
     private static final int BUFFER_COUNT = 3;
     private static final int EGL_MUTABLE_RENDER_BUFFER_KHR = 0x30A8;
 
@@ -96,6 +96,7 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
     private int matrixLocation;
     private int samplerLocation;
     private int rotateLocation;
+    private boolean nativeFenceSyncAvailable;
     private FloatBuffer vertices;
     private final float[] textureMatrix = new float[16];
 
@@ -155,6 +156,7 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
         if (extensions == null || !extensions.contains("EGL_KHR_image_base")) {
             throw new IllegalStateException("EGL_KHR_image_base is unavailable");
         }
+        nativeFenceSyncAvailable = extensions.contains("EGL_ANDROID_native_fence_sync");
 
         int[] configAttributes = {
                 EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT,
@@ -325,8 +327,14 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
     }
 
     private SyncFence createPresentationFence() {
+        if (!nativeFenceSyncAvailable) {
+            // Correctness takes priority over asynchronous fences on drivers
+            // that do not expose EGL_ANDROID_native_fence_sync.
+            GLES20.glFinish();
+            return null;
+        }
         try {
-            EGLSync sync = EGL14.eglCreateSync(display, EGL_SYNC_FENCE_KHR,
+            EGLSync sync = EGL14.eglCreateSync(display, EGL_SYNC_NATIVE_FENCE_ANDROID,
                     new int[]{EGL14.EGL_NONE}, 0);
             if (sync == null) {
                 GLES20.glFinish();
