@@ -199,7 +199,6 @@ public final class SyzygyQuicTunnel implements AutoCloseable {
                     }
                     try { socket.shutdownOutput(); } catch (IOException ignored) { }
                 } catch (Exception error) {
-                    failed.set(true);
                     closeQuietly(socket);
                 } finally {
                     if (directions.decrementAndGet() == 0) closeQuietly(socket);
