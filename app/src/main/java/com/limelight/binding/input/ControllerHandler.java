@@ -1480,55 +1480,6 @@ if (inputSender != null) {
         }
 
 
-        //fix joycon-left 十字键
-        if(prefConfig.enableJoyConFix&&context.vendorId == 0x057e && context.productId == 0x2006){
-            switch (event.getScanCode())
-            {
-                case 546://十字键
-                    return KeyEvent.KEYCODE_DPAD_LEFT;
-                case 547:
-                    return KeyEvent.KEYCODE_DPAD_RIGHT;
-                case 544:
-                    return KeyEvent.KEYCODE_DPAD_UP;
-                case 545:
-                    return KeyEvent.KEYCODE_DPAD_DOWN;
-                case 309://截图键
-                    return KeyEvent.KEYCODE_BUTTON_MODE;
-                case 310:
-                    return KeyEvent.KEYCODE_BUTTON_L1;
-                case 312:
-                    return KeyEvent.KEYCODE_BUTTON_L2;
-                case 314:
-                    return KeyEvent.KEYCODE_BUTTON_SELECT;
-                case 317:
-                    return KeyEvent.KEYCODE_BUTTON_THUMBL;
-            }
-        }
-        //fix JoyCon-right xy互换
-        if(prefConfig.enableJoyConFix&&context.vendorId == 0x057e && context.productId == 0x2007){
-            switch (event.getScanCode())
-            {
-                case 307://XY相反
-                    return KeyEvent.KEYCODE_BUTTON_Y;
-                case 308:
-                    return KeyEvent.KEYCODE_BUTTON_X;
-                case 304:
-                    return KeyEvent.KEYCODE_BUTTON_A;
-                case 305:
-                    return KeyEvent.KEYCODE_BUTTON_B;
-                case 311:
-                    return KeyEvent.KEYCODE_BUTTON_R1;
-                case 313:
-                    return KeyEvent.KEYCODE_BUTTON_R2;
-                case 315:
-                    return KeyEvent.KEYCODE_BUTTON_START;
-                case 316:
-                    return KeyEvent.KEYCODE_BUTTON_MODE;
-                case 318:
-                    return KeyEvent.KEYCODE_BUTTON_THUMBR;
-            }
-        }
-
 
         if (context.usesLinuxGamepadStandardFaceButtons) {
             // Android's Generic.kl swaps BTN_NORTH and BTN_WEST

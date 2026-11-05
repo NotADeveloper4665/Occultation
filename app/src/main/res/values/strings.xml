@@ -476,9 +476,7 @@
     <string name="summary_square_buttons">Virtual button shapes are square buttons, by default they are round.</string>
     <string name="title_reset_keyboard_layout">Reset virtual keyboard layout</string>
     <string name="summary_reset_keyboard_layout">Initialize the special key layout (reset the default selected layout scheme)</string>
-    <string name="title_joyconfix">Compatible with Switch JoyCon</string>
-    <string name="summary_joyconfix">If your JoyCon cannot be used or has key recognition issues, you can try to enable this feature. Adapted for Android 10 and above</string>
-    <string name="title_keyboard_opacity">Virtual Full Keyboard Opacity</string>
+        <string name="title_keyboard_opacity">Virtual Full Keyboard Opacity</string>
     <string name="title_onscreen_keyboard_autofit">Virtual Full Keyboard Disable Autofit</string>
     <string name="title_onscreen_keyboard_height">Virtual Full Keyboard Height</string>
     <string name="title_onscreen_keyboard_width">Virtual Full Keyboard Width</string>
@@ -552,9 +550,7 @@
     <string name="summary_checkbox_enforce_display_mode">Force surface to use the optimal display mode.\nRequired by some systems (such as ColorOS) to set refresh rate/resolution properly.\nDo not enable on ChromeCast 4K as it might lead to bugs.</string>
     <string name="title_checkbox_ultra_low_latency">Ultra Low Latency (experimental)</string>
     <string name="summary_checkbox_ultra_low_latency">Only effective for SD8Gen2/8(s)Gen3/8Elite and MTK devices.</string>
-   	<string name="title_checkbox_forceTightThresholds">Tight Vsync (Experimental)</string>
-    <string name="summary_checkbox_forceTightThresholds">Tighter VSYNC thresholds for lower latency; may increase drops.</string>
-    <string name="title_checkbox_use_virtual_display">Use Virtual Display</string>
+   	    <string name="title_checkbox_use_virtual_display">Use Virtual Display</string>
     <string name="summary_checkbox_use_virtual_display">Use Virtual Display by default.\nVirtual Display can automatically match your client side resolution and frame rate settings, giving you a seamless streaming experience.\nRequires Apollo as host streaming software.</string>
     <string name="title_checkbox_resume_without_confirm">Quick Resume</string>
     <string name="summary_checkbox_resume_without_confirm">Do not show resume menu when clicking resume button, resume the app immediately.</string>
@@ -749,5 +745,9 @@
     <string name="desktop_mouse">Toggle full-screen mouse</string>
     <string name="desktop_trackpad">Trackpad</string>
     <string name="host_settings">Settings</string>
+    <string name="title_joyconfix">Switch Joy-Con compatibility</string>
+    <string name="summary_joyconfix">Enable this option if your Joy-Con does not work or its buttons are mapped incorrectly. Supports Android 10 and newer.</string>
+    <string name="title_checkbox_forceTightThresholds">Tight VSync (experimental)</string>
+    <string name="summary_checkbox_forceTightThresholds">Use tighter VSync thresholds to reduce latency; may increase frame drops.</string>
 </resources>
 

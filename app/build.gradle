@@ -173,6 +173,8 @@ android {
     testOptions {
         unitTests.includeAndroidResources = true
     }
+
+    sourceSets.main.jniLibs.srcDir(layout.buildDirectory.dir('generated/jniLibs'))
 }
 
 dependencies {
@@ -195,4 +197,18 @@ dependencies {
     testImplementation 'androidx.test:core:1.7.0'
     testImplementation 'org.robolectric:robolectric:4.16'
     testImplementation 'org.mockito:mockito-core:5.19.0'
+}
+
+
+// Build the pinned SQ1 QUIC client for every APK ABI before native packaging.
+def buildSyzygyQuic = tasks.register('buildSyzygyQuic', Exec) {
+    workingDir rootProject.file('quic-transport')
+    commandLine 'bash', rootProject.file('scripts/quic/build-android.sh')
+    inputs.files(fileTree(rootProject.file('quic-transport')) { exclude 'target/**' })
+    outputs.dir(layout.buildDirectory.dir('generated/jniLibs'))
+}
+tasks.configureEach { task ->
+    if (task.name == 'preBuild' || task.name.startsWith('configureNdkBuild') || task.name.startsWith('buildNdkBuild')) {
+        task.dependsOn(buildSyzygyQuic)
+    }
 }

@@ -238,7 +238,6 @@ public class PreferenceConfiguration {
     public int width, height, bitrate;
     public float fps;
 //    public String customBitrate;
-    public boolean forceTightThresholds = false; // default off
     public boolean enableUltraLowLatency;
     public String customResolution;
     public String customRefreshRate;
@@ -270,6 +269,7 @@ public class PreferenceConfiguration {
     public boolean onlyL3R3;
     public boolean showGuideButton;
     public boolean enableHdr;
+    public boolean enableFrontBufferRendering;
     public boolean enablePip;
     public boolean enablePerfOverlay;
     public boolean enablePerfLogging;
@@ -293,8 +293,6 @@ public class PreferenceConfiguration {
     public boolean autoOrientation;
     //虚拟屏幕键盘按键
     public boolean enableKeyboard;
-    //修复JoyCon十字键
-    public boolean enableJoyConFix;
 
     //自由摇杆啊
     public boolean enableNewAnalogStick;
@@ -928,6 +926,7 @@ private static int getFramePacingValue(Context context) {
         config.onlyL3R3 = prefs.getBoolean(ONLY_L3_R3_PREF_STRING, ONLY_L3_R3_DEFAULT);
         config.showGuideButton = prefs.getBoolean(SHOW_GUIDE_BUTTON_PREF_STRING, SHOW_GUIDE_BUTTON_DEFAULT);
         config.enableHdr = prefs.getBoolean(ENABLE_HDR_PREF_STRING, DEFAULT_ENABLE_HDR) && !isShieldAtvFirmwareWithBrokenHdr();
+        config.enableFrontBufferRendering = prefs.getBoolean("checkbox_front_buffer_rendering", false);
         config.enablePip = prefs.getBoolean(ENABLE_PIP_PREF_STRING, DEFAULT_ENABLE_PIP);
         config.enablePerfOverlay = prefs.getBoolean(ENABLE_PERF_OVERLAY_STRING, DEFAULT_ENABLE_PERF_OVERLAY);
         config.enablePerfLogging = prefs.getBoolean(ENABLE_PERF_LOGGING, DEFAULT_ENABLE_PERF_LOGGING);
@@ -956,8 +955,6 @@ private static int getFramePacingValue(Context context) {
         config.enableKeyboard = prefs.getBoolean(CHECKBOX_ENABLE_KEYBOARD,false);
 
         config.enableKeyboardVibrate = prefs.getBoolean(CHECKBOX_ENABLE_KEYBOARD_VIBRATE,false);
-        //兼容joycon手柄
-        config.enableJoyConFix = prefs.getBoolean("checkbox_joycon_fix",false);
         //全键盘透明度
         config.oscKeyboardOpacity = prefs.getInt("seekbar_keyboard_axi_opacity",DEFAULT_OPACITY);
 

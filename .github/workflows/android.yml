@@ -61,6 +61,13 @@ jobs:
             gh release download dev --repo "$GITHUB_REPOSITORY" --pattern development-signer.sha256 --dir "$signer_dir"
             test -s "$signer_dir/development-signer.sha256"
           fi
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - name: Install Android Rust linker helper
+        run: cargo install cargo-ndk --locked
+      - name: Test QUIC transport crate
+        run: cargo test --manifest-path quic-transport/Cargo.toml
       - name: Test signing verification
         run: python3 -m unittest discover -s scripts -p 'test_development_signing.py' -v
       - name: Test, lint and build development APKs
