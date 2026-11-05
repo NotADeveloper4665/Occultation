@@ -24,7 +24,17 @@ public final class FrontBufferRenderer implements AutoCloseable {
     private final boolean singleBufferActive;
     private final boolean portraitTransformActive;
 
-    private static final class HardwareBackendResult {\n        final Surface decoderSurface;\n        final Runnable closeAction;\n        HardwareBackendResult(HardwareBufferFrontBufferRenderer backend) {\n            decoderSurface = backend.decoderSurface();\n            closeAction = backend::close;\n        }\n    }\n\n    public FrontBufferRenderer(Surface displaySurface, Object parentSurfaceControl,
+    @RequiresApi(33)
+    private static final class HardwareBackendResult {
+        final Surface decoderSurface;
+        final Runnable closeAction;
+        HardwareBackendResult(HardwareBufferFrontBufferRenderer backend) {
+            decoderSurface = backend.decoderSurface();
+            closeAction = backend::close;
+        }
+    }
+
+    public FrontBufferRenderer(Surface displaySurface, Object parentSurfaceControl,
                                int width, int height, Consumer<String> status) {
         if (Build.VERSION.SDK_INT < 24) {
             throw new IllegalStateException("Front-buffer rendering requires Android 7.0 or newer");
