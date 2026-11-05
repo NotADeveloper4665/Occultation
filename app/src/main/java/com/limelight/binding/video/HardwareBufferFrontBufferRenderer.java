@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @RequiresApi(33)
 public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
-    private static final String TAG = "OccultationHardwareBuffer";
+    private static final String TAG = "OccultationHB";
     private static final int EGL_SYNC_NATIVE_FENCE_ANDROID = 0x3144;
     private static final int BUFFER_COUNT = 3;
     private static final int EGL_MUTABLE_RENDER_BUFFER_KHR = 0x30A8;
