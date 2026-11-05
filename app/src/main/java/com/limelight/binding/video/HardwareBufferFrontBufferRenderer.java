@@ -213,9 +213,9 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
         try {
             transaction.setBufferSize(childSurfaceControl, bufferWidth, bufferHeight);
             transaction.setPosition(childSurfaceControl, 0f, 0f);
-            transaction.setWindowCrop(childSurfaceControl, new Rect(0, 0, bufferWidth, bufferHeight));
+            transaction.setCrop(childSurfaceControl, new Rect(0, 0, bufferWidth, bufferHeight));
             transaction.setLayer(childSurfaceControl, Integer.MAX_VALUE - 1);
-            transaction.show(childSurfaceControl);
+            transaction.setVisibility(childSurfaceControl, true);
             transaction.apply();
         } finally {
             transaction.close();
@@ -411,7 +411,7 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
             if (childSurfaceControl != null) {
                 SurfaceControl.Transaction transaction = new SurfaceControl.Transaction();
                 try {
-                    transaction.remove(childSurfaceControl);
+                    transaction.reparent(childSurfaceControl, null);
                     transaction.apply();
                 } finally {
                     transaction.close();
