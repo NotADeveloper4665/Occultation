@@ -5,6 +5,7 @@ import android.graphics.SurfaceTexture;
 import android.hardware.HardwareBuffer;
 import android.hardware.SyncFence;
 import android.opengl.EGL14;
+import android.opengl.EGL15;
 import android.opengl.EGLConfig;
 import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
@@ -334,15 +335,15 @@ public final class HardwareBufferFrontBufferRenderer implements AutoCloseable {
             return null;
         }
         try {
-            EGLSync sync = EGL14.eglCreateSync(display, EGL_SYNC_NATIVE_FENCE_ANDROID,
-                    new int[]{EGL14.EGL_NONE}, 0);
+            EGLSync sync = EGL15.eglCreateSync(display, EGL_SYNC_NATIVE_FENCE_ANDROID,
+                    new long[]{EGL14.EGL_NONE}, 0);
             if (sync == null) {
                 GLES20.glFinish();
                 return null;
             }
             GLES20.glFlush();
             SyncFence fence = EGLExt.eglDupNativeFenceFDANDROID(display, sync);
-            EGL14.eglDestroySync(display, sync);
+            EGL15.eglDestroySync(display, sync);
             if (fence == null || !fence.isValid()) {
                 if (fence != null) fence.close();
                 GLES20.glFinish();
