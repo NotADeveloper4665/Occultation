@@ -10,6 +10,7 @@ import android.os.Build;
 import android.util.Log;
 import android.view.Surface;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.util.Consumer;
 
 import java.util.Locale;
@@ -23,7 +24,7 @@ public final class FrontBufferRenderer implements AutoCloseable {
     private final boolean singleBufferActive;
     private final boolean portraitTransformActive;
 
-    public FrontBufferRenderer(Surface displaySurface, Object parentSurfaceControl,
+    private static final class HardwareBackendResult {\n        final Surface decoderSurface;\n        final Runnable closeAction;\n        HardwareBackendResult(HardwareBufferFrontBufferRenderer backend) {\n            decoderSurface = backend.decoderSurface();\n            closeAction = backend::close;\n        }\n    }\n\n    public FrontBufferRenderer(Surface displaySurface, Object parentSurfaceControl,
                                int width, int height, Consumer<String> status) {
         if (Build.VERSION.SDK_INT < 24) {
             throw new IllegalStateException("Front-buffer rendering requires Android 7.0 or newer");
@@ -36,10 +37,13 @@ public final class FrontBufferRenderer implements AutoCloseable {
         boolean mediaTek = isMediaTekDevice();
         String renderer = mediaTek ? "mediatek" : probeRenderer(displaySurface).toLowerCase(Locale.ROOT);
         if (mediaTek) {
-            HardwareBufferFrontBufferRenderer backend = createHardwareBackend(
+            if (Build.VERSION.SDK_INT < 33) {
+                throw new IllegalStateException("MediaTek portrait producer requires Android 13 (API 33)");
+            }
+            HardwareBackendResult backend = createHardwareBackend(
                     displaySurface, parentSurfaceControl, width, height, true, status);
-            decoderSurface = backend.decoderSurface();
-            closeAction = backend::close;
+            decoderSurface = backend.decoderSurface;
+            closeAction = backend.closeAction;
             singleBufferActive = false;
             portraitTransformActive = true;
             return;
@@ -56,10 +60,13 @@ public final class FrontBufferRenderer implements AutoCloseable {
         }
 
         if (renderer.contains("mali") || renderer.contains("arm")) {
-            HardwareBufferFrontBufferRenderer backend = createHardwareBackend(
+            if (Build.VERSION.SDK_INT < 33) {
+                throw new IllegalStateException("Mali HardwareBuffer path requires Android 13 (API 33)");
+            }
+            HardwareBackendResult backend = createHardwareBackend(
                     displaySurface, parentSurfaceControl, width, height, false, status);
-            decoderSurface = backend.decoderSurface();
-            closeAction = backend::close;
+            decoderSurface = backend.decoderSurface;
+            closeAction = backend.closeAction;
             singleBufferActive = false;
             portraitTransformActive = false;
             if (status != null) {
@@ -73,13 +80,15 @@ public final class FrontBufferRenderer implements AutoCloseable {
         throw new IllegalStateException("Unsupported GPU for front-buffer rendering: " + renderer);
     }
 
-    private static HardwareBufferFrontBufferRenderer createHardwareBackend(
+    @RequiresApi(33)
+    private static HardwareBackendResult createHardwareBackend(
             Surface surface, Object parent, int width, int height, boolean portrait,
             Consumer<String> status) {
         if (Build.VERSION.SDK_INT < 33 || parent == null) {
             throw new IllegalStateException("HardwareBuffer SurfaceControl path requires API 33 and a parent SurfaceControl");
         }
-        return new HardwareBufferFrontBufferRenderer(surface, parent, width, height, portrait, status);
+        return new HardwareBackendResult(
+                new HardwareBufferFrontBufferRenderer(surface, parent, width, height, portrait, status));
     }
 
     private static boolean isMediaTekDevice() {
