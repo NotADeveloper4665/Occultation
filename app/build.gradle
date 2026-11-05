@@ -202,7 +202,7 @@ dependencies {
 
 // Build the pinned SQ1 QUIC client for every APK ABI before native packaging.
 def buildSyzygyQuic = tasks.register('buildSyzygyQuic', Exec) {
-    workingDir rootProject.projectDir
+    workingDir rootProject.file('quic-transport')
     commandLine 'bash', rootProject.file('scripts/quic/build-android.sh')
     inputs.files(fileTree(rootProject.file('quic-transport')) { exclude 'target/**' })
     outputs.dir(layout.buildDirectory.dir('generated/jniLibs'))
