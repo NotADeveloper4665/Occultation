@@ -6,6 +6,7 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.concurrent.ExecutorService;
@@ -14,6 +15,7 @@ import java.util.concurrent.Executors;
 public class PerformanceDataTracker {
 
     private static final String PREF_KEY_LOG = "performance_log";
+    private static final int MAX_LOG_ENTRIES = 100;
 
     // Constants for field names
     private static final String FIELD_DEVICE = "Device";
@@ -29,7 +31,8 @@ public class PerformanceDataTracker {
     private static final String FIELD_FRAME_PACING = "Frame Pacing";
     private static final String FIELD_DATETIME = "Date/Time";
 
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    // One process-wide writer avoids creating a new executor thread for every stream.
+    private static final ExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadExecutor();
 
     public void savePerformanceStatistics(
             Context context,
@@ -46,7 +49,7 @@ public class PerformanceDataTracker {
             String framePacing,
             String dateTime) {
 
-        executorService.execute(() -> saveToPreferences(context, device, osVersion, appVersion, codec,
+        EXECUTOR_SERVICE.execute(() -> saveToPreferences(context, device, osVersion, appVersion, codec,
                 decodingTimeMs, stats, bitrateMbps, resolution, frameRateFps, average, framePacing, dateTime));
     }
 
@@ -115,7 +118,7 @@ public class PerformanceDataTracker {
                 Log.d("PerformanceDataTracker", "Replaced older entry with decoding time: " + worstDecodingTime);
             }
 
-            logsArray.put(newEntry);
+            appendBounded(logsArray, newEntry);
             prefs.edit().putString(PREF_KEY_LOG, logsArray.toString()).apply();
             Log.d("PerformanceDataTracker", "New performance data saved.");
 
@@ -134,14 +137,23 @@ public class PerformanceDataTracker {
         }
     }
 
+    static void appendBounded(JSONArray logsArray, JSONObject newEntry) throws JSONException {
+        logsArray.put(newEntry);
+        while (logsArray.length() > MAX_LOG_ENTRIES) {
+            logsArray.remove(0);
+        }
+    }
+
     public String getLog(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         return prefs.getString(PREF_KEY_LOG, "");
     }
 
     public void clearLogs(Context context) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        prefs.edit().remove(PREF_KEY_LOG).apply();
-        Log.d("PerformanceDataTracker", "All logs cleared.");
+        EXECUTOR_SERVICE.execute(() -> {
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+            prefs.edit().remove(PREF_KEY_LOG).apply();
+            Log.d("PerformanceDataTracker", "All logs cleared.");
+        });
     }
 }
