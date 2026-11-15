@@ -214,6 +214,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private static final int CR_RECOVERY_TYPE_RESET = 3;
     private AtomicInteger codecRecoveryType = new AtomicInteger(CR_RECOVERY_TYPE_NONE);
     private final Object codecRecoveryMonitor = new Object();
+    private final DecoderOutputWatchdog decoderOutputWatchdog = new DecoderOutputWatchdog();
 
     // Each thread that touches the MediaCodec object or any associated buffers must have a flag
     // here and must call doCodecRecoveryIfRequired() on a regular basis.
@@ -1492,8 +1493,12 @@ this.initialWidth = invertResolution ? height : width;
                 double ewmaJitterNs = managedMode ? (periodNs * 0.15) : (periodNs * 0.10);
 
                 BufferInfo info = new BufferInfo();
-                long lastOutputNs = System.nanoTime();
                 while (!stopping) {
+                    // Service pending recovery on every renderer-loop path, including the
+                    // low-latency path below which intentionally skips the generic drain.
+                    if (doCodecRecoveryIfRequired(CR_FLAG_RENDER_THREAD)) {
+                        continue;
+                    }
 
                     // Periodic sticky affinity refresh (cheap): re-pin if mask changed
                     if (prefs != null && prefs.preferBigCores) {
@@ -1527,6 +1532,7 @@ if (preferLowerDelays) {
             // Nothing ready: gently expand micro-timeout
             preferLowerDelaysTimeoutUs = Math.min(1000, preferLowerDelaysTimeoutUs + 125);
         } else {
+            decoderOutputWatchdog.onOutputAvailable(System.nanoTime());
             final long firstPtsUs = lfrInfo.presentationTimeUs;
             final long nowNs = System.nanoTime();
             final long vsyncNs = (vsyncPeriodNsCached > 0L) ? vsyncPeriodNsCached : 16_666_667L;
@@ -1602,6 +1608,7 @@ if (preferLowerDelays) {
                         }
 
                         if (outIndex >= 0) {
+                            decoderOutputWatchdog.onOutputAvailable(System.nanoTime());
                             // --- flags per gestire le statistiche in modo robusto ---
                             boolean statsUpdated = false;
                             boolean frameDropped = false;
@@ -1827,22 +1834,12 @@ if (preferLowerDelays) {
                     }
                 }
 
-                /* WATCHDOG_C2_SLEEP */
-                try {
-                    final long __nowNs = System.nanoTime();
-                    if (__nowNs - lastOutputNs > 1_200_000_000L) { // ~1.2s senza output → probabile C2 sleep
-                        LimeLog.warning("Decoder watchdog: no output >1.2s, flushing codec to recover...");
-                        try {
-                            videoDecoder.flush();
-                        } catch (Throwable ignored) {}
-                        try {
-                            android.os.Bundle __poke = new android.os.Bundle();
-                            __poke.putInt("priority", 0);
-                            videoDecoder.setParameters(__poke);
-                        } catch (Throwable ignored) {}
-                        lastOutputNs = __nowNs;
-                    }
-                } catch (Throwable ignored) {}
+                // Request recovery only when input is still arriving but decoded output has
+                // stopped. The codec is flushed later by the coordinated recovery barrier.
+                if (decoderOutputWatchdog.shouldRequestRecovery(System.nanoTime()) &&
+                        codecRecoveryType.compareAndSet(CR_RECOVERY_TYPE_NONE, CR_RECOVERY_TYPE_FLUSH)) {
+                    LimeLog.warning("Decoder watchdog: input is active but decoded output has stalled; requesting coordinated flush");
+                }
 
 // Close PHM session if created and restore affinity
                 try { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && __hs != null) __hs.close(); } catch (Throwable ignored) {}
@@ -2049,6 +2046,7 @@ if (preferLowerDelays) {
             videoDecoder.queueInputBuffer(nextInputBufferIndex,
                     0, nextInputBuffer.position(),
                     timestampUs, codecFlags);
+            decoderOutputWatchdog.onInputQueued(System.nanoTime());
 
             // Track enqueue time for this PTS
             try { enqueueNsByPtsUs.put(timestampUs, System.nanoTime()); } catch (Throwable ignored) {}
