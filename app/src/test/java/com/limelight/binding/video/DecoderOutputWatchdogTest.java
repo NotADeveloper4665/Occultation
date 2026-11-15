@@ -41,11 +41,16 @@ public class DecoderOutputWatchdogTest {
         long stalledAtNs = startNs + DecoderOutputWatchdog.STALL_TIMEOUT_NS;
 
         assertTrue(watchdog.shouldRequestRecovery(stalledAtNs));
-        watchdog.onOutputAvailable(stalledAtNs + 1);
-        watchdog.onInputQueued(stalledAtNs + 2);
+        // Treat output progress and the next queued input as the same activity
+        // point. Otherwise the output timer can reach its threshold one nanosecond
+        // before the input-activity window does, making the boundary assertion
+        // depend on two different clocks rather than the re-arming contract.
+        long resumedAtNs = stalledAtNs + 2;
+        watchdog.onOutputAvailable(resumedAtNs);
+        watchdog.onInputQueued(resumedAtNs);
 
-        assertFalse(watchdog.shouldRequestRecovery(stalledAtNs + 2 + DecoderOutputWatchdog.STALL_TIMEOUT_NS - 1));
-        assertTrue(watchdog.shouldRequestRecovery(stalledAtNs + 2 + DecoderOutputWatchdog.STALL_TIMEOUT_NS));
+        assertFalse(watchdog.shouldRequestRecovery(resumedAtNs + DecoderOutputWatchdog.STALL_TIMEOUT_NS - 1));
+        assertTrue(watchdog.shouldRequestRecovery(resumedAtNs + DecoderOutputWatchdog.STALL_TIMEOUT_NS));
     }
 
     @Test
