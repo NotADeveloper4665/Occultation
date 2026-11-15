@@ -27,7 +27,7 @@ start the advertised Desktop app when tapping a paired computer. If Desktop is
 missing, ambiguous, or another app is running, the normal app list remains available.
 The option is saved with profiles.
 
-Recording, steady-delay buffering, adaptive bitrate and upscaling ports remain planned.
+Optional encoded-stream recording and additional steady-delay modes remain planned; neural upscaling and frame interpolation are deferred research. WAN feedback is already implemented through Syzygy protocol v1, with host-side adaptive FEC and bitrate changes available on supported encoders.
 
 - [Feature port and validation plan](docs/FEATURE-PORT.md)
 - [Quality-first engineering playbook](docs/ENGINEERING-PLAYBOOK.md)
