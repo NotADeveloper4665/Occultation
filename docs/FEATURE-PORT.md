@@ -35,8 +35,11 @@
    a portable shader implementation. Support Adreno, Mali and other GPUs through
    runtime capability checks. Disable recording while FSR is active, matching
    Eclipse's current policy; do not require a Qualcomm-specific dependency.
-6. **Adaptive bitrate:** port only after checking the actual Syzygy control
-   endpoint and congestion behavior; retain a manual bitrate override.
+6. **WAN feedback / adaptive bitrate:** already implemented as negotiated Syzygy
+   WAN protocol v1. Occultation sends authenticated RTT, jitter and frame-gap feedback;
+   Syzygy adapts FEC and can reconfigure FFmpeg libx264/NVENC bitrate. Do not add a
+   second controller. Remaining work is validation and capability coverage for host
+   encoders without safe runtime reconfiguration (notably native Windows NVENC/VAAPI).
 
 Microphone/webcam forwarding needs Android capture permissions, lifecycle handling
 and a corresponding host protocol. Desktop USB/IP forwarding is not generally
