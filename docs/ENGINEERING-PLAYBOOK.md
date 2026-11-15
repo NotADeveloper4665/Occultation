@@ -109,17 +109,23 @@ Any EGL, HardwareBuffer, or vendor-specific path must:
 - fall back to the standard decoder surface without corrupting session state;
 - demonstrate lower end-to-end latency or better pacing on physical hardware.
 
-### 3. Adaptive bitrate: protocol-led, not client-only
+### 3. WAN feedback and adaptive bitrate: extend the existing v1 system
 
-The existing WAN optimization path and Moonlight congestion behavior must be audited
-before adding another controller. A client-side bitrate slider is not adaptive bitrate.
-The implementation needs an authoritative host control mechanism, a reliable signal
-for network/decoder pressure, and a safe range negotiated with the host.
+This is not a greenfield feature. Occultation already negotiates `SyzygyWanVersion=1`,
+sends authenticated RTT/jitter/frame-gap feedback about once per second through
+`NvHTTP.sendWanFeedback()`, and uses a retry/backoff worker owned by `NvConnection`.
+Syzygy consumes that feedback for adaptive FEC and runtime bitrate changes on supported
+FFmpeg libx264 and FFmpeg NVENC encoders. The host documentation states that native
+Windows NVENC and VAAPI do not yet have a supported live reconfiguration path; multiple
+simultaneous clients and pacing backlog also trigger conservative fallbacks.
 
-Keep manual bitrate as the stable override. If the host exposes no supported live
-bitrate-control endpoint, do not pretend a local preference changes the active encoder.
-Design a controller with hysteresis, rate limits, minimum dwell time, bounded steps,
-and a disable switch. Avoid reacting to a single RTT spike or transient frame.
+Do not add a second client controller or a competing telemetry endpoint. The next
+work is to validate and harden the existing contract: verify telemetry units and
+semantics, retry/stop races, missing-feedback behavior, encoder capability reporting,
+multiple-client behavior, and real cellular impairment. Preserve manual bitrate as
+the configured ceiling and retain the host's conservative fallback. Any extension
+must be version-negotiated, authenticated, rate-limited, bounded, and tested with
+older hosts and clients.
 
 ### 4. Session/profile improvements
 
