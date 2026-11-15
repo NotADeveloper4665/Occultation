@@ -30,6 +30,7 @@ The option is saved with profiles.
 Recording, steady-delay buffering, adaptive bitrate and upscaling ports remain planned.
 
 - [Feature port and validation plan](docs/FEATURE-PORT.md)
+- [Quality-first engineering playbook](docs/ENGINEERING-PLAYBOOK.md)
 - [Pinned upstream baseline](docs/ARTEMIDE-UPSTREAM.md)
 - [Original Artemide README](docs/ARTEMIDE-README.md)
 
