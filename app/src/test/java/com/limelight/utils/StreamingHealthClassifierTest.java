@@ -19,6 +19,8 @@ public class StreamingHealthClassifierTest {
                 classifier.observe(StreamingHealthClassifier.Sample.unavailable()).getStatus());
         assertEquals(StreamingHealthClassifier.Status.INSUFFICIENT_DATA,
                 classifier.observe(sample(25, 0, 3, Double.NaN, 60, 60, false)).getStatus());
+        assertEquals(StreamingHealthClassifier.Status.INSUFFICIENT_DATA,
+                classifier.observe(sample(25, 0, 3, Double.NaN, 60, 60, false)).getStatus());
         assertEquals(StreamingHealthClassifier.Status.HEALTHY,
                 classifier.observe(sample(25, 0, 3, Double.NaN, 60, 60, false)).getStatus());
     }
