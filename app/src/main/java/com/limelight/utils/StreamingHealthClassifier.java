@@ -118,7 +118,7 @@ public final class StreamingHealthClassifier {
         int recovering = 0;
         for (int i = 0; i < sampleCount; i++) {
             Status status = window[i];
-            if (status != Status.INSUFFICIENT_DATA) {
+            if (status != Status.INSUFFICIENT_DATA && status != Status.RECOVERING) {
                 validSamples++;
             }
             if (status == Status.NETWORK_PRESSURE) network++;
