@@ -511,6 +511,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         performanceOverlayBig = findViewById(R.id.performanceOverlayBig);
 
+        View.OnLongClickListener diagnosticsShareListener = v -> {
+            shareSessionDiagnostics();
+            return true;
+        };
+        performanceOverlayLite.setOnLongClickListener(diagnosticsShareListener);
+        performanceOverlayBig.setOnLongClickListener(diagnosticsShareListener);
+
         inputCaptureProvider = InputCaptureManager.getInputCaptureProvider(this, this);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -3942,6 +3949,19 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         else if ((visibility & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0) {
             hideSystemUi(2000);
         }
+    }
+
+    private void shareSessionDiagnostics() {
+        if (decoderRenderer == null) {
+            Toast.makeText(this, "Session diagnostics are not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Occultation session diagnostics");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, decoderRenderer.buildShareableDiagnosticsReport());
+        startActivity(Intent.createChooser(shareIntent, "Share session diagnostics"));
     }
 
     @Override
