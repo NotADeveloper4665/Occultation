@@ -134,7 +134,7 @@ public final class StreamingSessionDiagnostics {
         report.append("Event timeline\n");
         List<Event> snapshot = getEvents();
         if (snapshot.isEmpty()) {
-            report.append("No recorded recovery or transport events\n");
+            report.append("No session events recorded\n");
         } else {
             for (Event event : snapshot) {
                 report.append('+').append(event.elapsedMs).append(" ms: ")
