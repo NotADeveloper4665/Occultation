@@ -1001,7 +1001,7 @@ MediaFormat mediaFormat = createBaseMediaFormat(mimeType);
                         }
                     }
                 }
-            }, null);
+            }, new Handler(android.os.Looper.getMainLooper()));
         }
 
         return 0;
