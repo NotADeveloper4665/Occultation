@@ -524,7 +524,14 @@ public class NvConnection {
                                     int loss = videoDecoderRenderer instanceof com.limelight.binding.video.MediaCodecDecoderRenderer
                                         ? ((com.limelight.binding.video.MediaCodecDecoderRenderer)videoDecoderRenderer).takeWanLoss() : 0;
                                     telemetry.sendWanFeedback((int)(rtt >> 32), (int)rtt, loss);
-                                    if (failed) LimeLog.info("WAN feedback recovered");
+                                    if (failed) {
+                                        LimeLog.info("WAN feedback recovered");
+                                        if (videoDecoderRenderer instanceof com.limelight.binding.video.MediaCodecDecoderRenderer) {
+                                            ((com.limelight.binding.video.MediaCodecDecoderRenderer) videoDecoderRenderer)
+                                                    .getSessionDiagnostics().recordEvent(
+                                                            com.limelight.utils.StreamingSessionDiagnostics.EventType.FEEDBACK_RECOVERED);
+                                        }
+                                    }
                                     failed = false;
                                     retry.succeeded();
                                 } catch (InterruptedException expected) {
