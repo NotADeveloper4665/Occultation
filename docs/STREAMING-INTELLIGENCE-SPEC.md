@@ -1,6 +1,6 @@
 # Streaming Intelligence — Client Diagnostics Spec
 
-Status: proposal / first implementation slice
+Status: first implementation slice in progress
 Target: Occultation Android client
 Branch base: `fix/bounded-performance-history`
 Host counterpart: Syzygy Core telemetry and bounded per-session pipeline work
@@ -98,9 +98,10 @@ Pixel 9a and other Android device sessions before being advertised as universal.
 ### Slice 1 — foundation
 - [x] Record this feature contract and source-of-truth boundaries.
 - [ ] Audit the exact overlay callback and stats lifecycle on the selected base.
-- [ ] Add pure-Java health classifier and rolling-window tests.
-- [ ] Wire existing client metrics into the classifier.
-- [ ] Add a compact health row to the existing performance overlay, with a details affordance.
+- [x] Add pure-Java health classifier and rolling-window tests.
+- [x] Wire existing client metrics into the classifier.
+- [x] Add a compact health row to the existing performance overlay.
+- [ ] Add a details affordance for the health evidence.
 
 ### Slice 2 — recovery and session history
 - [ ] Publish decoder recovery and transport/reconnect events from existing lifecycle owners.
@@ -143,3 +144,15 @@ Pixel 9a and other Android device sessions before being advertised as universal.
   Moonlight host, and Syzygy with/without the optional host telemetry capability.
 - No release, merge, or public claim of measured latency improvements until device evidence
   exists.
+
+
+## Implementation progress
+
+### Slice 1 — health indicator
+- Added a pure-Java rolling classifier with a five-sample window and three-vote transition threshold.
+- Requires at least three evidence-bearing samples before showing Healthy or a pressure category.
+- Uses client-observed RTT/loss, decoder time, host-reported processing time, and received-versus-rendered FPS.
+- Decoder recovery is surfaced immediately as Recovering.
+- Missing metrics remain unavailable; they are never converted to zero.
+- The existing performance overlay displays the current health state and its evidence summary.
+- Thresholds are provisional diagnostic heuristics and must be calibrated on real devices before being described as universal.
