@@ -147,7 +147,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     // Present helper: choose render timestamp based on pacing policy.
     private void releaseWithPolicy(int index, long nowNs, long presentationTimeUs) {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && presentationTimeUs >= 0) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && prefs != null &&
+                    (prefs.enablePerfOverlay || prefs.enablePerfLogging) && presentationTimeUs >= 0) {
                 synchronized (presentationSubmitNsByPtsUs) {
                     presentationSubmitNsByPtsUs.put(presentationTimeUs, System.nanoTime());
                     while (presentationSubmitNsByPtsUs.size() > 64) {
@@ -976,7 +977,7 @@ MediaFormat mediaFormat = createBaseMediaFormat(mimeType);
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if ((prefs.enablePerfOverlay || prefs.enablePerfLogging) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             videoDecoder.setOnFrameRenderedListener(new MediaCodec.OnFrameRenderedListener() {
                 @Override
                 public void onFrameRendered(MediaCodec mediaCodec, long presentationTimeUs, long renderTimeNanos) {
