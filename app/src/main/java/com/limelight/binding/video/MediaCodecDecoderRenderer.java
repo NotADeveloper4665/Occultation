@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.jcodec.codecs.h264.H264Utils;
 import org.jcodec.codecs.h264.io.model.SeqParameterSet;
@@ -85,8 +84,9 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private final LongSparseArray<Long> enqueueNsByPtsUs = new LongSparseArray<>();
     // Local MediaCodec release-to-render callback delay; not glass-to-glass latency.
     private final LongSparseArray<Long> presentationSubmitNsByPtsUs = new LongSparseArray<>();
-    private final AtomicLong presentationDelayTotalNs = new AtomicLong();
-    private final AtomicInteger presentationDelaySamples = new AtomicInteger();
+    private final Object presentationDelayLock = new Object();
+    private long presentationDelayTotalNs;
+    private int presentationDelaySamples;
 
     // When preferLowerDelays=false we use this configurable timeout (µs) for output dequeue.
     // When preferLowerDelays=true we force 0µs (non-blocking, latest-frame rendering).
@@ -971,8 +971,10 @@ MediaFormat mediaFormat = createBaseMediaFormat(mimeType);
                     if (submittedAtNs != null) {
                         long delayNs = renderTimeNanos - submittedAtNs;
                         if (delayNs >= 0 && delayNs < 1_000_000_000L) {
-                            presentationDelayTotalNs.addAndGet(delayNs);
-                            presentationDelaySamples.incrementAndGet();
+                            synchronized (presentationDelayLock) {
+                                presentationDelayTotalNs += delayNs;
+                                presentationDelaySamples++;
+                            }
                         }
                     }
                     if (USE_FRAME_RENDER_TIME) {
@@ -2191,8 +2193,14 @@ if (preferLowerDelays) {
                 double hostProcessingMs = lastTwo.framesWithHostProcessingLatency > 0 ?
                         (double) lastTwo.totalHostProcessingLatency / 10.0 /
                                 lastTwo.framesWithHostProcessingLatency : Double.NaN;
-                int presentationSamples = presentationDelaySamples.getAndSet(0);
-                long presentationTotalNs = presentationDelayTotalNs.getAndSet(0);
+                int presentationSamples;
+                long presentationTotalNs;
+                synchronized (presentationDelayLock) {
+                    presentationSamples = presentationDelaySamples;
+                    presentationTotalNs = presentationDelayTotalNs;
+                    presentationDelaySamples = 0;
+                    presentationDelayTotalNs = 0;
+                }
                 double presentationDelayMs = presentationSamples > 0 ?
                         (double) presentationTotalNs / presentationSamples / 1_000_000.0 : Double.NaN;
                 StreamingHealthClassifier.Assessment health = streamingHealthClassifier.observe(
