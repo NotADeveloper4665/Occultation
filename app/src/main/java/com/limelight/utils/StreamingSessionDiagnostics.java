@@ -19,7 +19,8 @@ public final class StreamingSessionDiagnostics {
         RECONNECT_SUCCEEDED("Reconnect succeeded"),
         SESSION_DISCONNECTED("Session disconnected"),
         TRANSPORT_FALLBACK("Transport fallback"),
-        FEEDBACK_UNAVAILABLE("Host feedback unavailable");
+        FEEDBACK_UNAVAILABLE("Host feedback unavailable"),
+        FEEDBACK_RECOVERED("Host feedback recovered");
 
         private final String label;
 
