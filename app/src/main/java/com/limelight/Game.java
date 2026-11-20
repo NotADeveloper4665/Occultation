@@ -187,6 +187,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private SpinnerDialog spinner;
     private boolean displayedFailureDialog = false;
     private boolean connecting = false;
+    private boolean hasConnectedOnce = false;
+    private boolean reconnectAttemptRecorded = false;
     public boolean connected = false;
     private boolean autoEnterPip = false;
     private boolean surfaceCreated = false;
@@ -3407,6 +3409,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public void stageStarting(final String stage) {
+        if (hasConnectedOnce && !connected && !reconnectAttemptRecorded && decoderRenderer != null) {
+            decoderRenderer.getSessionDiagnostics().recordEvent(
+                    com.limelight.utils.StreamingSessionDiagnostics.EventType.RECONNECT_ATTEMPT);
+            reconnectAttemptRecorded = true;
+        }
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -3644,6 +3651,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public void connectionStarted() {
+        if (hasConnectedOnce && reconnectAttemptRecorded && decoderRenderer != null) {
+            decoderRenderer.getSessionDiagnostics().recordEvent(
+                    com.limelight.utils.StreamingSessionDiagnostics.EventType.RECONNECT_SUCCEEDED);
+        }
+        hasConnectedOnce = true;
+        reconnectAttemptRecorded = false;
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
