@@ -17,6 +17,7 @@ public final class StreamingSessionDiagnostics {
         DECODER_RECOVERY_COMPLETED("Decoder recovery completed"),
         RECONNECT_ATTEMPT("Reconnect attempt"),
         RECONNECT_SUCCEEDED("Reconnect succeeded"),
+        SESSION_DISCONNECTED("Session disconnected"),
         TRANSPORT_FALLBACK("Transport fallback"),
         FEEDBACK_UNAVAILABLE("Host feedback unavailable");
 
