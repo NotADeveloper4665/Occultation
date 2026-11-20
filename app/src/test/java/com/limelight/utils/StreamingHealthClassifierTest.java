@@ -55,6 +55,23 @@ public class StreamingHealthClassifierTest {
     }
 
     @Test
+    public void sustainedPressureRequiresAStableWindowToClear() {
+        StreamingHealthClassifier classifier = new StreamingHealthClassifier();
+        for (int i = 0; i < 3; i++) {
+            classifier.observe(sample(130, 2, 3, Double.NaN, 60, 60, false));
+        }
+        assertEquals(StreamingHealthClassifier.Status.NETWORK_PRESSURE,
+                classifier.observe(sample(130, 2, 3, Double.NaN, 60, 60, false)).getStatus());
+
+        for (int i = 0; i < 4; i++) {
+            assertEquals(StreamingHealthClassifier.Status.NETWORK_PRESSURE,
+                    classifier.observe(sample(25, 0, 3, Double.NaN, 60, 60, false)).getStatus());
+        }
+        assertEquals(StreamingHealthClassifier.Status.HEALTHY,
+                classifier.observe(sample(25, 0, 3, Double.NaN, 60, 60, false)).getStatus());
+    }
+
+    @Test
     public void recoveryIsImmediateAndResetClearsHistory() {
         StreamingHealthClassifier classifier = new StreamingHealthClassifier();
         StreamingHealthClassifier.Assessment recovery =
