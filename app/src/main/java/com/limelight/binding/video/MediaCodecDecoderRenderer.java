@@ -2691,6 +2691,9 @@ if (preferLowerDelays) {
         double hostMs = globalVideoStats.framesWithHostProcessingLatency > 0 ?
                 (double) globalVideoStats.totalHostProcessingLatency / 10.0 /
                         globalVideoStats.framesWithHostProcessingLatency : Double.NaN;
+        double packetLossPercent = globalVideoStats.totalFrames > 0 ?
+                (double) globalVideoStats.framesLost * 100.0 / globalVideoStats.totalFrames : Double.NaN;
+        VideoStatsFps sessionFps = globalVideoStats.getFps();
 
         StreamingSessionDiagnostics.Codec codec = StreamingSessionDiagnostics.Codec.UNKNOWN;
         if ((videoFormat & MoonBridge.VIDEO_FORMAT_MASK_H264) != 0) {
@@ -2712,6 +2715,9 @@ if (preferLowerDelays) {
                 targetFps > 0 ? targetFps : 60,
                 prefs != null ? prefs.bitrate : 0,
                 health,
+                packetLossPercent,
+                globalVideoStats.measurementStartTimestamp > 0 ? sessionFps.receivedFps : Double.NaN,
+                globalVideoStats.measurementStartTimestamp > 0 ? sessionFps.renderedFps : Double.NaN,
                 rttMs,
                 decoderMs,
                 lastPresentationDelayMs,
