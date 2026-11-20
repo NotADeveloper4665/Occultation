@@ -225,6 +225,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private final StreamingHealthClassifier streamingHealthClassifier = new StreamingHealthClassifier();
     private final StreamingSessionDiagnostics sessionDiagnostics = new StreamingSessionDiagnostics();
     private final AtomicBoolean recoveryEventActive = new AtomicBoolean(false);
+    private volatile double lastPresentationDelayMs = Double.NaN;
+    private volatile StreamingHealthClassifier.Assessment lastHealthAssessment;
 
     public StreamingSessionDiagnostics getSessionDiagnostics() {
         return sessionDiagnostics;
@@ -2236,6 +2238,8 @@ if (preferLowerDelays) {
                                 fps.renderedFps,
                                 prefs.fps > 0 ? prefs.fps : 60,
                                 codecRecoveryType.get() != CR_RECOVERY_TYPE_NONE));
+                lastHealthAssessment = health;
+                lastPresentationDelayMs = presentationDelayMs;
                 StringBuilder sb = new StringBuilder();
                 if(prefs.enablePerfOverlayLite){
                     if(TrafficStatsHelper.getPackageRxBytes(Process.myUid()) != TrafficStats.UNSUPPORTED){
@@ -2675,6 +2679,42 @@ if (preferLowerDelays) {
             return 0;
         }
         return (int)(globalVideoStats.decoderTimeMs / globalVideoStats.totalFramesReceived);
+    }
+
+    public String buildShareableDiagnosticsReport() {
+        long rttInfo = MoonBridge.getEstimatedRttInfo();
+        double rttMs = (rttInfo >>> 32) > 0 ? (double) (rttInfo >>> 32) : Double.NaN;
+        double decoderMs = globalVideoStats.totalFramesReceived > 0 ?
+                (double) globalVideoStats.decoderTimeMs / globalVideoStats.totalFramesReceived : Double.NaN;
+        double hostMs = globalVideoStats.framesWithHostProcessingLatency > 0 ?
+                (double) globalVideoStats.totalHostProcessingLatency / 10.0 /
+                        globalVideoStats.framesWithHostProcessingLatency : Double.NaN;
+
+        StreamingSessionDiagnostics.Codec codec = StreamingSessionDiagnostics.Codec.UNKNOWN;
+        if ((videoFormat & MoonBridge.VIDEO_FORMAT_MASK_H264) != 0) {
+            codec = StreamingSessionDiagnostics.Codec.H264;
+        } else if ((videoFormat & MoonBridge.VIDEO_FORMAT_MASK_H265) != 0) {
+            codec = StreamingSessionDiagnostics.Codec.HEVC;
+        } else if ((videoFormat & MoonBridge.VIDEO_FORMAT_MASK_AV1) != 0) {
+            codec = StreamingSessionDiagnostics.Codec.AV1;
+        }
+
+        StreamingHealthClassifier.Status health = lastHealthAssessment == null ?
+                StreamingHealthClassifier.Status.INSUFFICIENT_DATA : lastHealthAssessment.getStatus();
+        StreamingSessionDiagnostics.Summary summary = new StreamingSessionDiagnostics.Summary(
+                codec,
+                StreamingSessionDiagnostics.Renderer.UNKNOWN,
+                StreamingSessionDiagnostics.Transport.UNKNOWN,
+                initialWidth,
+                initialHeight,
+                targetFps > 0 ? targetFps : 60,
+                prefs != null ? prefs.bitrate : 0,
+                health,
+                rttMs,
+                decoderMs,
+                lastPresentationDelayMs,
+                hostMs);
+        return sessionDiagnostics.buildShareableReport(summary);
     }
 
     public Boolean performanceWasTracked() {
