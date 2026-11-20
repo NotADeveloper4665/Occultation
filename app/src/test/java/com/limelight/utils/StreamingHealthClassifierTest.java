@@ -55,6 +55,18 @@ public class StreamingHealthClassifierTest {
     }
 
     @Test
+    public void measuredPresentationDelayCanIdentifyPacingPressure() {
+        StreamingHealthClassifier classifier = new StreamingHealthClassifier();
+        for (int i = 0; i < 3; i++) {
+            classifier.observe(new StreamingHealthClassifier.Sample(
+                    25, 0, 3, Double.NaN, 25, 60, 60, 60, false));
+        }
+        assertEquals(StreamingHealthClassifier.Status.PRESENTATION_PACING,
+                classifier.observe(new StreamingHealthClassifier.Sample(
+                        25, 0, 3, Double.NaN, 25, 60, 60, 60, false)).getStatus());
+    }
+
+    @Test
     public void sustainedPressureRequiresAStableWindowToClear() {
         StreamingHealthClassifier classifier = new StreamingHealthClassifier();
         for (int i = 0; i < 3; i++) {
