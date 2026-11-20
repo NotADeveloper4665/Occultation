@@ -532,7 +532,14 @@ public class NvConnection {
                                     break;
                                 } catch (IOException | XmlPullParserException e) {
                                     if (wanStopping) break;
-                                    if (!failed) LimeLog.warning("WAN feedback unavailable; retrying with conservative host fallback: " + e.getMessage());
+                                    if (!failed) {
+                                        LimeLog.warning("WAN feedback unavailable; retrying with conservative host fallback: " + e.getMessage());
+                                        if (videoDecoderRenderer instanceof com.limelight.binding.video.MediaCodecDecoderRenderer) {
+                                            ((com.limelight.binding.video.MediaCodecDecoderRenderer) videoDecoderRenderer)
+                                                    .getSessionDiagnostics().recordEvent(
+                                                            com.limelight.utils.StreamingSessionDiagnostics.EventType.FEEDBACK_UNAVAILABLE);
+                                        }
+                                    }
                                     failed = true;
                                     retry.failed();
                                 }
