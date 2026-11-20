@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jcodec.codecs.h264.H264Utils;
 import org.jcodec.codecs.h264.io.model.SeqParameterSet;
@@ -20,6 +21,8 @@ import com.limelight.nvstream.av.video.VideoDecoderRenderer;
 import com.limelight.nvstream.jni.MoonBridge;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.utils.TrafficStatsHelper;
+import com.limelight.utils.StreamingHealthClassifier;
+import com.limelight.utils.StreamingSessionDiagnostics;
 
 import android.annotation.SuppressLint;
 import android.util.LongSparseArray;
@@ -81,6 +84,11 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     // Toggle at runtime if needed
     // Decode latency tracking: map PTS(us) -> enqueue time (ns)
     private final LongSparseArray<Long> enqueueNsByPtsUs = new LongSparseArray<>();
+    // Local MediaCodec release-to-render callback delay; not glass-to-glass latency.
+    private final LongSparseArray<Long> presentationSubmitNsByPtsUs = new LongSparseArray<>();
+    private final Object presentationDelayLock = new Object();
+    private long presentationDelayTotalNs;
+    private int presentationDelaySamples;
 
     // When preferLowerDelays=false we use this configurable timeout (µs) for output dequeue.
     // When preferLowerDelays=true we force 0µs (non-blocking, latest-frame rendering).
@@ -137,8 +145,17 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     }
 
     // Present helper: choose render timestamp based on pacing policy.
-    private void releaseWithPolicy(int index, long nowNs) {
+    private void releaseWithPolicy(int index, long nowNs, long presentationTimeUs) {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && prefs != null &&
+                    (prefs.enablePerfOverlay || prefs.enablePerfLogging) && presentationTimeUs >= 0) {
+                synchronized (presentationSubmitNsByPtsUs) {
+                    presentationSubmitNsByPtsUs.put(presentationTimeUs, System.nanoTime());
+                    while (presentationSubmitNsByPtsUs.size() > 64) {
+                        presentationSubmitNsByPtsUs.removeAt(0);
+                    }
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 // In max smoothness or cap FPS, render at TS=0 to avoid Surface-side drops.
                 if (prefs != null && (prefs.framePacing == PreferenceConfiguration.FRAME_PACING_MAX_SMOOTHNESS ||
@@ -206,6 +223,22 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private String glRenderer;
     private boolean foreground = true;
     private PerfOverlayListener perfListener;
+    private final StreamingHealthClassifier streamingHealthClassifier = new StreamingHealthClassifier();
+    private final StreamingSessionDiagnostics sessionDiagnostics = new StreamingSessionDiagnostics();
+    private final AtomicBoolean recoveryEventActive = new AtomicBoolean(false);
+    private volatile double lastPresentationDelayMs = Double.NaN;
+    private volatile StreamingHealthClassifier.Assessment lastHealthAssessment;
+
+    public StreamingSessionDiagnostics getSessionDiagnostics() {
+        return sessionDiagnostics;
+    }
+
+    private void recordRecoveryRequestIfNeeded() {
+        if (codecRecoveryType.get() != CR_RECOVERY_TYPE_NONE &&
+                recoveryEventActive.compareAndSet(false, true)) {
+            sessionDiagnostics.recordEvent(StreamingSessionDiagnostics.EventType.DECODER_RECOVERY_REQUESTED);
+        }
+    }
 
     private static final int CR_MAX_TRIES = 10;
     private static final int CR_RECOVERY_TYPE_NONE = 0;
@@ -944,18 +977,32 @@ MediaFormat mediaFormat = createBaseMediaFormat(mimeType);
             }
         }
 
-        if (USE_FRAME_RENDER_TIME && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if ((prefs.enablePerfOverlay || prefs.enablePerfLogging) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             videoDecoder.setOnFrameRenderedListener(new MediaCodec.OnFrameRenderedListener() {
                 @Override
                 public void onFrameRendered(MediaCodec mediaCodec, long presentationTimeUs, long renderTimeNanos) {
-                    long delta = (renderTimeNanos / 1000000L) - (presentationTimeUs / 1000);
-                    if (delta >= 0 && delta < 1000) {
-                        if (USE_FRAME_RENDER_TIME) {
+                    Long submittedAtNs;
+                    synchronized (presentationSubmitNsByPtsUs) {
+                        submittedAtNs = presentationSubmitNsByPtsUs.get(presentationTimeUs);
+                        presentationSubmitNsByPtsUs.delete(presentationTimeUs);
+                    }
+                    if (submittedAtNs != null) {
+                        long delayNs = renderTimeNanos - submittedAtNs;
+                        if (delayNs >= 0 && delayNs < 1_000_000_000L) {
+                            synchronized (presentationDelayLock) {
+                                presentationDelayTotalNs += delayNs;
+                                presentationDelaySamples++;
+                            }
+                        }
+                    }
+                    if (USE_FRAME_RENDER_TIME) {
+                        long delta = (renderTimeNanos / 1000000L) - (presentationTimeUs / 1000);
+                        if (delta >= 0 && delta < 1000) {
                             activeWindowVideoStats.totalTimeMs += delta;
                         }
                     }
                 }
-            }, null);
+            }, new Handler(android.os.Looper.getMainLooper()));
         }
 
         return 0;
@@ -1101,6 +1148,12 @@ this.initialWidth = invertResolution ? height : width;
                     }
                 }
 
+                // Record a completed recovery only after the codec is usable again.
+                if (!stopping && codecRecoveryType.get() == CR_RECOVERY_TYPE_NONE &&
+                        recoveryEventActive.compareAndSet(true, false)) {
+                    sessionDiagnostics.recordEvent(StreamingSessionDiagnostics.EventType.DECODER_RECOVERY_COMPLETED);
+                }
+
                 // Wake all quiesced threads and allow them to begin work again
                 codecRecoveryThreadQuiescedFlags = 0;
                 codecRecoveryMonitor.notifyAll();
@@ -1183,6 +1236,7 @@ this.initialWidth = invertResolution ? height : width;
                 }
 
                 // The recovery will take place when all threads reach doCodecRecoveryIfRequired().
+                recordRecoveryRequestIfNeeded();
                 return false;
             }
         }
@@ -1208,6 +1262,7 @@ this.initialWidth = invertResolution ? height : width;
                     throw new IllegalStateException("Unexpected codec recovery type: " + codecRecoveryType.get());
                 }
 
+                recordRecoveryRequestIfNeeded();
                 return false;
             }
         }
@@ -1678,7 +1733,7 @@ if (preferLowerDelays) {
                                         }
 
 // Present per policy (near-now o TS=0 in smoothness/cap)
-                                        releaseWithPolicy(lastIndex, nowNs);
+                                        releaseWithPolicy(lastIndex, nowNs, presentationTimeUs);
                                         lastPresentNs = nowNs;
                                         recentDrops = Math.max(0, recentDrops - 1);
 // [STATS] update subito dopo il present
@@ -1747,7 +1802,7 @@ if (preferLowerDelays) {
                                             continue; // niente stats sui frame droppati
                                         }
 
-                                        releaseWithPolicy(lastIndex, nowNs);
+                                        releaseWithPolicy(lastIndex, nowNs, presentationTimeUs);
                                         lastPresentNs = nowNs;
                                         if (!isLate) lateStreak = 0;
                                         recentDrops = Math.max(0, recentDrops - 1);
@@ -2155,8 +2210,38 @@ if (preferLowerDelays) {
                     decoder = "(unknown)";
                 }
 
-                float decodeTimeMs = (float)lastTwo.decoderTimeMs / lastTwo.totalFramesReceived;
+                float decodeTimeMs = lastTwo.totalFramesReceived > 0 ?
+                        (float) lastTwo.decoderTimeMs / lastTwo.totalFramesReceived : Float.NaN;
                 long rttInfo = MoonBridge.getEstimatedRttInfo();
+                double rttMs = (rttInfo >>> 32) > 0 ? (double) (rttInfo >>> 32) : Double.NaN;
+                double packetLossPercent = lastTwo.totalFrames > 0 ?
+                        (double) lastTwo.framesLost * 100.0 / lastTwo.totalFrames : Double.NaN;
+                double hostProcessingMs = lastTwo.framesWithHostProcessingLatency > 0 ?
+                        (double) lastTwo.totalHostProcessingLatency / 10.0 /
+                                lastTwo.framesWithHostProcessingLatency : Double.NaN;
+                int presentationSamples;
+                long presentationTotalNs;
+                synchronized (presentationDelayLock) {
+                    presentationSamples = presentationDelaySamples;
+                    presentationTotalNs = presentationDelayTotalNs;
+                    presentationDelaySamples = 0;
+                    presentationDelayTotalNs = 0;
+                }
+                double presentationDelayMs = presentationSamples > 0 ?
+                        (double) presentationTotalNs / presentationSamples / 1_000_000.0 : Double.NaN;
+                StreamingHealthClassifier.Assessment health = streamingHealthClassifier.observe(
+                        new StreamingHealthClassifier.Sample(
+                                rttMs,
+                                packetLossPercent,
+                                decodeTimeMs,
+                                hostProcessingMs,
+                                presentationDelayMs,
+                                fps.receivedFps,
+                                fps.renderedFps,
+                                prefs.fps > 0 ? prefs.fps : 60,
+                                codecRecoveryType.get() != CR_RECOVERY_TYPE_NONE));
+                lastHealthAssessment = health;
+                lastPresentationDelayMs = presentationDelayMs;
                 StringBuilder sb = new StringBuilder();
                 if(prefs.enablePerfOverlayLite){
                     if(TrafficStatsHelper.getPackageRxBytes(Process.myUid()) != TrafficStats.UNSUPPORTED){
@@ -2212,9 +2297,24 @@ if (preferLowerDelays) {
                                 (float)lastTwo.minHostProcessingLatency / 10,
                                 (float)lastTwo.maxHostProcessingLatency / 10,
                                 (float)lastTwo.totalHostProcessingLatency / 10 / lastTwo.framesWithHostProcessingLatency)).append('\n');
+                    } else {
+                        sb.append("Host processing latency: unavailable").append('\n');
                     }
                     sb.append(context.getString(R.string.perf_overlay_dectime, decodeTimeMs));
                 }
+                if (prefs.enablePerfOverlayLite) {
+                    sb.append("  Host: ");
+                    sb.append(Double.isNaN(hostProcessingMs) ? "unavailable" :
+                            String.format("%.1f ms", hostProcessingMs));
+                }
+                if (!Double.isNaN(presentationDelayMs)) {
+                    sb.append(prefs.enablePerfOverlayLite ? "  Present: " : "\nPresentation delay (release to render): ");
+                    sb.append(String.format("%.2f ms", presentationDelayMs));
+                } else if (!prefs.enablePerfOverlayLite) {
+                    sb.append("\nPresentation delay (release to render): unavailable");
+                }
+                sb.append(prefs.enablePerfOverlayLite ? "  " : "\n");
+                sb.append("Health: ").append(health.formatForOverlay());
                 String fullLog = sb.toString();
                 if(prefs.enablePerfOverlay) {
                     perfListener.onPerfUpdate(fullLog);
@@ -2581,6 +2681,48 @@ if (preferLowerDelays) {
             return 0;
         }
         return (int)(globalVideoStats.decoderTimeMs / globalVideoStats.totalFramesReceived);
+    }
+
+    public String buildShareableDiagnosticsReport() {
+        long rttInfo = MoonBridge.getEstimatedRttInfo();
+        double rttMs = (rttInfo >>> 32) > 0 ? (double) (rttInfo >>> 32) : Double.NaN;
+        double decoderMs = globalVideoStats.totalFramesReceived > 0 ?
+                (double) globalVideoStats.decoderTimeMs / globalVideoStats.totalFramesReceived : Double.NaN;
+        double hostMs = globalVideoStats.framesWithHostProcessingLatency > 0 ?
+                (double) globalVideoStats.totalHostProcessingLatency / 10.0 /
+                        globalVideoStats.framesWithHostProcessingLatency : Double.NaN;
+        double packetLossPercent = globalVideoStats.totalFrames > 0 ?
+                (double) globalVideoStats.framesLost * 100.0 / globalVideoStats.totalFrames : Double.NaN;
+        VideoStatsFps sessionFps = globalVideoStats.getFps();
+
+        StreamingSessionDiagnostics.Codec codec = StreamingSessionDiagnostics.Codec.UNKNOWN;
+        if ((videoFormat & MoonBridge.VIDEO_FORMAT_MASK_H264) != 0) {
+            codec = StreamingSessionDiagnostics.Codec.H264;
+        } else if ((videoFormat & MoonBridge.VIDEO_FORMAT_MASK_H265) != 0) {
+            codec = StreamingSessionDiagnostics.Codec.HEVC;
+        } else if ((videoFormat & MoonBridge.VIDEO_FORMAT_MASK_AV1) != 0) {
+            codec = StreamingSessionDiagnostics.Codec.AV1;
+        }
+
+        StreamingHealthClassifier.Status health = lastHealthAssessment == null ?
+                StreamingHealthClassifier.Status.INSUFFICIENT_DATA : lastHealthAssessment.getStatus();
+        StreamingSessionDiagnostics.Summary summary = new StreamingSessionDiagnostics.Summary(
+                codec,
+                StreamingSessionDiagnostics.Renderer.UNKNOWN,
+                StreamingSessionDiagnostics.Transport.UNKNOWN,
+                initialWidth,
+                initialHeight,
+                targetFps > 0 ? targetFps : 60,
+                prefs != null ? prefs.bitrate : 0,
+                health,
+                packetLossPercent,
+                globalVideoStats.measurementStartTimestamp > 0 ? sessionFps.receivedFps : Double.NaN,
+                globalVideoStats.measurementStartTimestamp > 0 ? sessionFps.renderedFps : Double.NaN,
+                rttMs,
+                decoderMs,
+                lastPresentationDelayMs,
+                hostMs);
+        return sessionDiagnostics.buildShareableReport(summary);
     }
 
     public Boolean performanceWasTracked() {
