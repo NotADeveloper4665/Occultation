@@ -20,6 +20,7 @@ import com.limelight.nvstream.av.video.VideoDecoderRenderer;
 import com.limelight.nvstream.jni.MoonBridge;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.utils.TrafficStatsHelper;
+import com.limelight.utils.StreamingHealthClassifier;
 
 import android.annotation.SuppressLint;
 import android.util.LongSparseArray;
@@ -206,6 +207,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private String glRenderer;
     private boolean foreground = true;
     private PerfOverlayListener perfListener;
+    private final StreamingHealthClassifier streamingHealthClassifier = new StreamingHealthClassifier();
 
     private static final int CR_MAX_TRIES = 10;
     private static final int CR_RECOVERY_TYPE_NONE = 0;
@@ -2155,8 +2157,25 @@ if (preferLowerDelays) {
                     decoder = "(unknown)";
                 }
 
-                float decodeTimeMs = (float)lastTwo.decoderTimeMs / lastTwo.totalFramesReceived;
+                float decodeTimeMs = lastTwo.totalFramesReceived > 0 ?
+                        (float) lastTwo.decoderTimeMs / lastTwo.totalFramesReceived : Float.NaN;
                 long rttInfo = MoonBridge.getEstimatedRttInfo();
+                double rttMs = (rttInfo >>> 32) > 0 ? (double) (rttInfo >>> 32) : Double.NaN;
+                double packetLossPercent = lastTwo.totalFrames > 0 ?
+                        (double) lastTwo.framesLost * 100.0 / lastTwo.totalFrames : Double.NaN;
+                double hostProcessingMs = lastTwo.framesWithHostProcessingLatency > 0 ?
+                        (double) lastTwo.totalHostProcessingLatency / 10.0 /
+                                lastTwo.framesWithHostProcessingLatency : Double.NaN;
+                StreamingHealthClassifier.Assessment health = streamingHealthClassifier.observe(
+                        new StreamingHealthClassifier.Sample(
+                                rttMs,
+                                packetLossPercent,
+                                decodeTimeMs,
+                                hostProcessingMs,
+                                fps.receivedFps,
+                                fps.renderedFps,
+                                prefs.fps > 0 ? prefs.fps : 60,
+                                codecRecoveryType.get() != CR_RECOVERY_TYPE_NONE));
                 StringBuilder sb = new StringBuilder();
                 if(prefs.enablePerfOverlayLite){
                     if(TrafficStatsHelper.getPackageRxBytes(Process.myUid()) != TrafficStats.UNSUPPORTED){
@@ -2215,6 +2234,8 @@ if (preferLowerDelays) {
                     }
                     sb.append(context.getString(R.string.perf_overlay_dectime, decodeTimeMs));
                 }
+                sb.append(prefs.enablePerfOverlayLite ? "  " : "\\n");
+                sb.append("Health: ").append(health.formatForOverlay());
                 String fullLog = sb.toString();
                 if(prefs.enablePerfOverlay) {
                     perfListener.onPerfUpdate(fullLog);
