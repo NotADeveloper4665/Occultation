@@ -64,6 +64,9 @@ public final class StreamingSessionDiagnostics {
         public final int targetFps;
         public final int bitrateKbps;
         public final StreamingHealthClassifier.Status health;
+        public final double packetLossPercent;
+        public final double receivedFps;
+        public final double renderedFps;
         public final double networkRttMs;
         public final double decoderTimeMs;
         public final double presentationDelayMs;
@@ -74,6 +77,17 @@ public final class StreamingSessionDiagnostics {
                        StreamingHealthClassifier.Status health, double networkRttMs,
                        double decoderTimeMs, double presentationDelayMs,
                        double hostProcessingMs) {
+            this(codec, renderer, transport, width, height, targetFps, bitrateKbps, health,
+                    Double.NaN, Double.NaN, Double.NaN, networkRttMs, decoderTimeMs,
+                    presentationDelayMs, hostProcessingMs);
+        }
+
+        public Summary(Codec codec, Renderer renderer, Transport transport,
+                       int width, int height, int targetFps, int bitrateKbps,
+                       StreamingHealthClassifier.Status health, double packetLossPercent,
+                       double receivedFps, double renderedFps, double networkRttMs,
+                       double decoderTimeMs, double presentationDelayMs,
+                       double hostProcessingMs) {
             this.codec = codec == null ? Codec.UNKNOWN : codec;
             this.renderer = renderer == null ? Renderer.UNKNOWN : renderer;
             this.transport = transport == null ? Transport.UNKNOWN : transport;
@@ -82,6 +96,9 @@ public final class StreamingSessionDiagnostics {
             this.targetFps = targetFps;
             this.bitrateKbps = bitrateKbps;
             this.health = health == null ? StreamingHealthClassifier.Status.INSUFFICIENT_DATA : health;
+            this.packetLossPercent = packetLossPercent;
+            this.receivedFps = receivedFps;
+            this.renderedFps = renderedFps;
             this.networkRttMs = networkRttMs;
             this.decoderTimeMs = decoderTimeMs;
             this.presentationDelayMs = presentationDelayMs;
@@ -126,6 +143,9 @@ public final class StreamingSessionDiagnostics {
                 .append(safeDimension(summary.height)).append(" @ ")
                 .append(safeFps(summary.targetFps)).append(" FPS\n");
         report.append("Bitrate: ").append(safeBitrate(summary.bitrateKbps)).append('\n');
+        report.append("Packet loss (client-observed): ").append(percent(summary.packetLossPercent)).append('\\n');
+        report.append("Received FPS: ").append(fps(summary.receivedFps)).append('\\n');
+        report.append("Rendered FPS: ").append(fps(summary.renderedFps)).append('\\n');
         report.append("Latency breakdown (source-labelled)\n");
         report.append("Network RTT (client-observed): ").append(metric(summary.networkRttMs)).append('\n');
         report.append("Decoder time (client-measured): ").append(metric(summary.decoderTimeMs)).append('\n');
@@ -149,6 +169,16 @@ public final class StreamingSessionDiagnostics {
     private static String metric(double value) {
         return Double.isNaN(value) || Double.isInfinite(value) || value < 0.0 ?
                 "unavailable" : String.format(java.util.Locale.US, "%.2f ms", value);
+    }
+
+    private static String percent(double value) {
+        return Double.isNaN(value) || Double.isInfinite(value) || value < 0.0 ?
+                "unavailable" : String.format(java.util.Locale.US, "%.2f%%", value);
+    }
+
+    private static String fps(double value) {
+        return Double.isNaN(value) || Double.isInfinite(value) || value < 0.0 ?
+                "unavailable" : String.format(java.util.Locale.US, "%.1f", value);
     }
 
     private static int safeDimension(int value) {
