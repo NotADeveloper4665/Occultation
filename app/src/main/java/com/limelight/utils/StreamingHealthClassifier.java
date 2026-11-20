@@ -36,6 +36,7 @@ public final class StreamingHealthClassifier {
         public final double packetLossPercent;
         public final double decoderTimeMs;
         public final double hostProcessingMs;
+        public final double presentationDelayMs;
         public final double receivedFps;
         public final double renderedFps;
         public final double targetFps;
@@ -44,10 +45,19 @@ public final class StreamingHealthClassifier {
         public Sample(double rttMs, double packetLossPercent, double decoderTimeMs,
                       double hostProcessingMs, double receivedFps, double renderedFps,
                       double targetFps, boolean recovering) {
+            this(rttMs, packetLossPercent, decoderTimeMs, hostProcessingMs, Double.NaN,
+                    receivedFps, renderedFps, targetFps, recovering);
+        }
+
+        public Sample(double rttMs, double packetLossPercent, double decoderTimeMs,
+                      double hostProcessingMs, double presentationDelayMs,
+                      double receivedFps, double renderedFps, double targetFps,
+                      boolean recovering) {
             this.rttMs = rttMs;
             this.packetLossPercent = packetLossPercent;
             this.decoderTimeMs = decoderTimeMs;
             this.hostProcessingMs = hostProcessingMs;
+            this.presentationDelayMs = presentationDelayMs;
             this.receivedFps = receivedFps;
             this.renderedFps = renderedFps;
             this.targetFps = targetFps;
@@ -216,10 +226,14 @@ public final class StreamingHealthClassifier {
         }
 
         boolean presentation = false;
+        if (isFinite(sample.presentationDelayMs)) {
+            hasEvidence = true;
+            presentation = sample.presentationDelayMs >= Math.max(8.0, frameBudgetMs * 1.25);
+        }
         if (isFinite(sample.receivedFps) && isFinite(sample.renderedFps) &&
                 sample.receivedFps >= 15.0) {
             hasEvidence = true;
-            presentation = sample.renderedFps < sample.receivedFps * 0.90;
+            presentation |= sample.renderedFps < sample.receivedFps * 0.90;
         }
 
         // Prefer the earliest evidenced stage. Multiple causes can coexist; this
