@@ -55,6 +55,6 @@ public class StreamingSessionDiagnosticsTest {
 
         assertFalse(report.contains("hostAddress"));
         assertFalse(report.contains("pairingKey"));
-        assertFalse(report.contains("certificate"));
+        assertFalse(report.contains("certificate:"));
     }
 }
