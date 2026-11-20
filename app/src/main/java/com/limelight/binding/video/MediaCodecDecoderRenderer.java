@@ -2260,16 +2260,23 @@ if (preferLowerDelays) {
                                 (float)lastTwo.minHostProcessingLatency / 10,
                                 (float)lastTwo.maxHostProcessingLatency / 10,
                                 (float)lastTwo.totalHostProcessingLatency / 10 / lastTwo.framesWithHostProcessingLatency)).append('\n');
+                    } else {
+                        sb.append("Host processing latency: unavailable").append('\n');
                     }
                     sb.append(context.getString(R.string.perf_overlay_dectime, decodeTimeMs));
                 }
+                if (prefs.enablePerfOverlayLite) {
+                    sb.append("  Host: ");
+                    sb.append(Double.isNaN(hostProcessingMs) ? "unavailable" :
+                            String.format("%.1f ms", hostProcessingMs));
+                }
                 if (!Double.isNaN(presentationDelayMs)) {
-                    sb.append(prefs.enablePerfOverlayLite ? "  Present: " : "\\nPresentation delay (release to render): ");
+                    sb.append(prefs.enablePerfOverlayLite ? "  Present: " : "\nPresentation delay (release to render): ");
                     sb.append(String.format("%.2f ms", presentationDelayMs));
                 } else if (!prefs.enablePerfOverlayLite) {
-                    sb.append("\\nPresentation delay (release to render): unavailable");
+                    sb.append("\nPresentation delay (release to render): unavailable");
                 }
-                sb.append(prefs.enablePerfOverlayLite ? "  " : "\\n");
+                sb.append(prefs.enablePerfOverlayLite ? "  " : "\n");
                 sb.append("Health: ").append(health.formatForOverlay());
                 String fullLog = sb.toString();
                 if(prefs.enablePerfOverlay) {
