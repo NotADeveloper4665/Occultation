@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.jcodec.codecs.h264.H264Utils;
 import org.jcodec.codecs.h264.io.model.SeqParameterSet;
@@ -82,6 +83,10 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     // Toggle at runtime if needed
     // Decode latency tracking: map PTS(us) -> enqueue time (ns)
     private final LongSparseArray<Long> enqueueNsByPtsUs = new LongSparseArray<>();
+    // Local MediaCodec release-to-render callback delay; not glass-to-glass latency.
+    private final LongSparseArray<Long> presentationSubmitNsByPtsUs = new LongSparseArray<>();
+    private final AtomicLong presentationDelayTotalNs = new AtomicLong();
+    private final AtomicInteger presentationDelaySamples = new AtomicInteger();
 
     // When preferLowerDelays=false we use this configurable timeout (µs) for output dequeue.
     // When preferLowerDelays=true we force 0µs (non-blocking, latest-frame rendering).
@@ -138,8 +143,16 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     }
 
     // Present helper: choose render timestamp based on pacing policy.
-    private void releaseWithPolicy(int index, long nowNs) {
+    private void releaseWithPolicy(int index, long nowNs, long presentationTimeUs) {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && presentationTimeUs >= 0) {
+                synchronized (presentationSubmitNsByPtsUs) {
+                    presentationSubmitNsByPtsUs.put(presentationTimeUs, System.nanoTime());
+                    while (presentationSubmitNsByPtsUs.size() > 64) {
+                        presentationSubmitNsByPtsUs.removeAt(0);
+                    }
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 // In max smoothness or cap FPS, render at TS=0 to avoid Surface-side drops.
                 if (prefs != null && (prefs.framePacing == PreferenceConfiguration.FRAME_PACING_MAX_SMOOTHNESS ||
@@ -946,13 +959,25 @@ MediaFormat mediaFormat = createBaseMediaFormat(mimeType);
             }
         }
 
-        if (USE_FRAME_RENDER_TIME && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             videoDecoder.setOnFrameRenderedListener(new MediaCodec.OnFrameRenderedListener() {
                 @Override
                 public void onFrameRendered(MediaCodec mediaCodec, long presentationTimeUs, long renderTimeNanos) {
-                    long delta = (renderTimeNanos / 1000000L) - (presentationTimeUs / 1000);
-                    if (delta >= 0 && delta < 1000) {
-                        if (USE_FRAME_RENDER_TIME) {
+                    Long submittedAtNs;
+                    synchronized (presentationSubmitNsByPtsUs) {
+                        submittedAtNs = presentationSubmitNsByPtsUs.get(presentationTimeUs);
+                        presentationSubmitNsByPtsUs.delete(presentationTimeUs);
+                    }
+                    if (submittedAtNs != null) {
+                        long delayNs = renderTimeNanos - submittedAtNs;
+                        if (delayNs >= 0 && delayNs < 1_000_000_000L) {
+                            presentationDelayTotalNs.addAndGet(delayNs);
+                            presentationDelaySamples.incrementAndGet();
+                        }
+                    }
+                    if (USE_FRAME_RENDER_TIME) {
+                        long delta = (renderTimeNanos / 1000000L) - (presentationTimeUs / 1000);
+                        if (delta >= 0 && delta < 1000) {
                             activeWindowVideoStats.totalTimeMs += delta;
                         }
                     }
@@ -1680,7 +1705,7 @@ if (preferLowerDelays) {
                                         }
 
 // Present per policy (near-now o TS=0 in smoothness/cap)
-                                        releaseWithPolicy(lastIndex, nowNs);
+                                        releaseWithPolicy(lastIndex, nowNs, presentationTimeUs);
                                         lastPresentNs = nowNs;
                                         recentDrops = Math.max(0, recentDrops - 1);
 // [STATS] update subito dopo il present
@@ -1749,7 +1774,7 @@ if (preferLowerDelays) {
                                             continue; // niente stats sui frame droppati
                                         }
 
-                                        releaseWithPolicy(lastIndex, nowNs);
+                                        releaseWithPolicy(lastIndex, nowNs, presentationTimeUs);
                                         lastPresentNs = nowNs;
                                         if (!isLate) lateStreak = 0;
                                         recentDrops = Math.max(0, recentDrops - 1);
@@ -2166,6 +2191,10 @@ if (preferLowerDelays) {
                 double hostProcessingMs = lastTwo.framesWithHostProcessingLatency > 0 ?
                         (double) lastTwo.totalHostProcessingLatency / 10.0 /
                                 lastTwo.framesWithHostProcessingLatency : Double.NaN;
+                int presentationSamples = presentationDelaySamples.getAndSet(0);
+                long presentationTotalNs = presentationDelayTotalNs.getAndSet(0);
+                double presentationDelayMs = presentationSamples > 0 ?
+                        (double) presentationTotalNs / presentationSamples / 1_000_000.0 : Double.NaN;
                 StreamingHealthClassifier.Assessment health = streamingHealthClassifier.observe(
                         new StreamingHealthClassifier.Sample(
                                 rttMs,
@@ -2233,6 +2262,12 @@ if (preferLowerDelays) {
                                 (float)lastTwo.totalHostProcessingLatency / 10 / lastTwo.framesWithHostProcessingLatency)).append('\n');
                     }
                     sb.append(context.getString(R.string.perf_overlay_dectime, decodeTimeMs));
+                }
+                if (!Double.isNaN(presentationDelayMs)) {
+                    sb.append(prefs.enablePerfOverlayLite ? "  Present: " : "\\nPresentation delay (release to render): ");
+                    sb.append(String.format("%.2f ms", presentationDelayMs));
+                } else if (!prefs.enablePerfOverlayLite) {
+                    sb.append("\\nPresentation delay (release to render): unavailable");
                 }
                 sb.append(prefs.enablePerfOverlayLite ? "  " : "\\n");
                 sb.append("Health: ").append(health.formatForOverlay());
