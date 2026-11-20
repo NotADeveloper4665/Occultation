@@ -104,7 +104,6 @@ public final class StreamingHealthClassifier {
 
         if (sample.recovering) {
             add(Status.RECOVERING);
-            lastStableStatus = Status.RECOVERING;
             return new Assessment(Status.RECOVERING, "Decoder recovery is in progress", sampleCount);
         }
 
