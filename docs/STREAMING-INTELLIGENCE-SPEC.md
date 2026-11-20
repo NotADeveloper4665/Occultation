@@ -1,6 +1,6 @@
 # Streaming Intelligence — Client Diagnostics Spec
 
-Status: first implementation slice in progress
+Status: implementation in progress
 Target: Occultation Android client
 Branch base: `fix/bounded-performance-history`
 Host counterpart: Syzygy Core telemetry and bounded per-session pipeline work
@@ -97,17 +97,20 @@ Pixel 9a and other Android device sessions before being advertised as universal.
 
 ### Slice 1 — foundation
 - [x] Record this feature contract and source-of-truth boundaries.
-- [ ] Audit the exact overlay callback and stats lifecycle on the selected base.
+- [x] Audit the exact overlay callback and stats lifecycle on the selected base.
 - [x] Add pure-Java health classifier and rolling-window tests.
 - [x] Wire existing client metrics into the classifier.
-- [x] Add a compact health row to the existing performance overlay.
-- [ ] Add a details affordance for the health evidence.
+- [x] Add a compact health row and evidence summary to the existing performance overlay.
+- [ ] Add a dedicated health details view.
 
 ### Slice 2 — recovery and session history
-- [ ] Publish decoder recovery and transport/reconnect events from existing lifecycle owners.
-- [ ] Add a bounded event ring (maximum 64 events per session).
+- [x] Publish decoder recovery requested/completed and session-disconnect events from existing lifecycle owners.
+- [x] Record missing Syzygy WAN feedback when the existing retry worker first enters its unavailable state.
+- [x] Add a bounded event ring (maximum 64 events per session).
+- [ ] Wire reconnect attempts/successes when an actual reconnect lifecycle exists; do not infer them from unrelated connection stages.
+- [ ] Wire transport fallback events from the negotiated transport owner; this branch currently has no confirmed fallback callback.
 - [ ] Add session summary to existing performance history without changing old JSON compatibility.
-- [ ] Add explicit user-initiated report sharing/export with sensitive fields excluded.
+- [x] Add explicit long-press report sharing with an allowlisted summary and no connection secrets.
 
 ### Slice 3 — Syzygy host telemetry
 - [ ] Define a versioned, authenticated capability/schema with Syzygy.
@@ -156,3 +159,24 @@ Pixel 9a and other Android device sessions before being advertised as universal.
 - Missing metrics remain unavailable; they are never converted to zero.
 - The existing performance overlay displays the current health state and its evidence summary.
 - Thresholds are provisional diagnostic heuristics and must be calibrated on real devices before being described as universal.
+
+
+## Runtime implementation status
+
+### Implemented on this branch
+- Conservative five-sample health classifier with three-vote transitions and a minimum evidence gate.
+- Health row and reason in the existing performance overlay.
+- Source-labelled network RTT, decoder time, host-reported processing latency, and local MediaCodec release-to-render presentation delay.
+- Presentation timing uses the MediaCodec frame-rendered callback and a bounded 64-entry PTS correlation map.
+- Bounded 64-event local timeline for decoder recovery requested/completed, session disconnect, and missing WAN feedback.
+- Long-press either performance overlay to explicitly open Android's share chooser for a report.
+- Report metadata is allowlisted (codec, dimensions, FPS, bitrate, enum-only renderer/transport); no host address, hostname, pairing key, certificate, or session identifier is accepted by the report model.
+- No automatic uploads or new background analytics worker.
+
+### Still open
+- Reconnect attempts/successes: the current connection lifecycle does not expose a distinct reconnect manager callback.
+- Transport fallback: wire the event at the actual negotiated transport fallback owner when that code is present on the target branch.
+- Report metadata still reports renderer/transport as Unknown until those values are exposed safely by the active runtime.
+- Session report persistence/history integration and a dedicated health details view.
+- Physical-device validation for callback timing, thermal/load impact, and threshold calibration.
+- Low Latency, Balanced, and Quality presets through ProfilesManager after diagnostics behavior is validated.
