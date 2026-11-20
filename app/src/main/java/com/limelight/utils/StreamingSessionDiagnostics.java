@@ -143,9 +143,9 @@ public final class StreamingSessionDiagnostics {
                 .append(safeDimension(summary.height)).append(" @ ")
                 .append(safeFps(summary.targetFps)).append(" FPS\n");
         report.append("Bitrate: ").append(safeBitrate(summary.bitrateKbps)).append('\n');
-        report.append("Packet loss (client-observed): ").append(percent(summary.packetLossPercent)).append('\\n');
-        report.append("Received FPS: ").append(fps(summary.receivedFps)).append('\\n');
-        report.append("Rendered FPS: ").append(fps(summary.renderedFps)).append('\\n');
+        report.append("Packet loss (client-observed): ").append(percent(summary.packetLossPercent)).append('\n');
+        report.append("Received FPS: ").append(fps(summary.receivedFps)).append('\n');
+        report.append("Rendered FPS: ").append(fps(summary.renderedFps)).append('\n');
         report.append("Latency breakdown (source-labelled)\n");
         report.append("Network RTT (client-observed): ").append(metric(summary.networkRttMs)).append('\n');
         report.append("Decoder time (client-measured): ").append(metric(summary.decoderTimeMs)).append('\n');
