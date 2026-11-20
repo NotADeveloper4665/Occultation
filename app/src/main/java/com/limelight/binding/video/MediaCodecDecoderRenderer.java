@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jcodec.codecs.h264.H264Utils;
 import org.jcodec.codecs.h264.io.model.SeqParameterSet;
@@ -21,6 +22,7 @@ import com.limelight.nvstream.jni.MoonBridge;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.utils.TrafficStatsHelper;
 import com.limelight.utils.StreamingHealthClassifier;
+import com.limelight.utils.StreamingSessionDiagnostics;
 
 import android.annotation.SuppressLint;
 import android.util.LongSparseArray;
@@ -221,6 +223,19 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private boolean foreground = true;
     private PerfOverlayListener perfListener;
     private final StreamingHealthClassifier streamingHealthClassifier = new StreamingHealthClassifier();
+    private final StreamingSessionDiagnostics sessionDiagnostics = new StreamingSessionDiagnostics();
+    private final AtomicBoolean recoveryEventActive = new AtomicBoolean(false);
+
+    public StreamingSessionDiagnostics getSessionDiagnostics() {
+        return sessionDiagnostics;
+    }
+
+    private void recordRecoveryRequestIfNeeded() {
+        if (codecRecoveryType.get() != CR_RECOVERY_TYPE_NONE &&
+                recoveryEventActive.compareAndSet(false, true)) {
+            sessionDiagnostics.recordEvent(StreamingSessionDiagnostics.EventType.DECODER_RECOVERY_REQUESTED);
+        }
+    }
 
     private static final int CR_MAX_TRIES = 10;
     private static final int CR_RECOVERY_TYPE_NONE = 0;
@@ -1130,6 +1145,12 @@ this.initialWidth = invertResolution ? height : width;
                     }
                 }
 
+                // Record a completed recovery only after the codec is usable again.
+                if (!stopping && codecRecoveryType.get() == CR_RECOVERY_TYPE_NONE &&
+                        recoveryEventActive.compareAndSet(true, false)) {
+                    sessionDiagnostics.recordEvent(StreamingSessionDiagnostics.EventType.DECODER_RECOVERY_COMPLETED);
+                }
+
                 // Wake all quiesced threads and allow them to begin work again
                 codecRecoveryThreadQuiescedFlags = 0;
                 codecRecoveryMonitor.notifyAll();
@@ -1212,6 +1233,7 @@ this.initialWidth = invertResolution ? height : width;
                 }
 
                 // The recovery will take place when all threads reach doCodecRecoveryIfRequired().
+                recordRecoveryRequestIfNeeded();
                 return false;
             }
         }
@@ -1237,6 +1259,7 @@ this.initialWidth = invertResolution ? height : width;
                     throw new IllegalStateException("Unexpected codec recovery type: " + codecRecoveryType.get());
                 }
 
+                recordRecoveryRequestIfNeeded();
                 return false;
             }
         }
