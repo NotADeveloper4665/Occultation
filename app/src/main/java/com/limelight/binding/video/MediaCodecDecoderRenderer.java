@@ -2235,6 +2235,7 @@ if (preferLowerDelays) {
                                 packetLossPercent,
                                 decodeTimeMs,
                                 hostProcessingMs,
+                                presentationDelayMs,
                                 fps.receivedFps,
                                 fps.renderedFps,
                                 prefs.fps > 0 ? prefs.fps : 60,
