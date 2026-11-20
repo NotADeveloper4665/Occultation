@@ -242,7 +242,7 @@ public final class StreamingHealthClassifier {
             case PRESENTATION_PACING:
                 return new Assessment(status, "Rendered frame cadence is trailing received cadence", samples);
             case RECOVERING:
-                return new Assessment(status, "Decoder recovery is in progress", samples);
+                return new Assessment(status, "Recent decoder recovery activity", samples);
             default:
                 return new Assessment(status, "No sustained client-visible pressure detected", samples);
         }
