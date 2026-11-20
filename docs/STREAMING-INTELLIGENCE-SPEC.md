@@ -166,7 +166,7 @@ Pixel 9a and other Android device sessions before being advertised as universal.
 ### Implemented on this branch
 - Conservative five-sample health classifier with three-vote transitions and a minimum evidence gate.
 - Health row and reason in the existing performance overlay.
-- Source-labelled network RTT, decoder time, host-reported processing latency, and local MediaCodec release-to-render presentation delay.
+- Source-labelled network RTT, packet loss, received/rendered FPS, decoder time, host-reported processing latency, and local MediaCodec release-to-render presentation delay.
 - Presentation timing uses the MediaCodec frame-rendered callback and a bounded 64-entry PTS correlation map.
 - Bounded 64-event local timeline for decoder recovery requested/completed, session disconnect, and missing and recovered WAN feedback.
 - Long-press either performance overlay to explicitly open Android's share chooser for a report.
