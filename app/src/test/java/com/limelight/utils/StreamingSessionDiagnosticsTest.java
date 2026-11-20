@@ -32,9 +32,12 @@ public class StreamingSessionDiagnosticsTest {
                 StreamingSessionDiagnostics.Transport.QUIC,
                 1920, 1080, 60, 20000,
                 StreamingHealthClassifier.Status.DECODER_PRESSURE,
-                35, 8.5, Double.NaN, Double.NaN));
+                1.5, 60, 58, 35, 8.5, Double.NaN, Double.NaN));
 
         assertTrue(report.contains("Network RTT (client-observed): 35.00 ms"));
+        assertTrue(report.contains("Packet loss (client-observed): 1.50%"));
+        assertTrue(report.contains("Received FPS: 60.0"));
+        assertTrue(report.contains("Rendered FPS: 58.0"));
         assertTrue(report.contains("Decoder time (client-measured): 8.50 ms"));
         assertTrue(report.contains("Presentation delay (release-to-render): unavailable"));
         assertTrue(report.contains("Host processing (host-reported): unavailable"));
